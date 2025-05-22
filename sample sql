@@ -1,0 +1,12 @@
+SELECT 
+    OBJECT_NAME(m.object_id) AS ProcedureName,
+    m.definition
+FROM 
+    sys.sql_modules m
+JOIN 
+    sys.objects o ON m.object_id = o.object_id
+WHERE 
+    m.definition LIKE '%CreatedDate%'
+    AND o.type = 'P'
+ORDER BY 
+    ProcedureName;
