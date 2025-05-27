@@ -4,12 +4,24 @@
 
 <style>
     .border-light-red {
-  border-left: 4px solid #f8d7da; /* light red */
-}
+        border-left: 4px solid #f8d7da; /* light red */
+    }
+    .btn-xs {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        border-radius: 0.2rem;
+        width: auto;
+        max-width: 100px;
+    }
 </style>
+
 <div class="card shadow-sm p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Household Questionnaire <span class="text-muted fs-6">ID: <strong>10000483</strong></span></h5>
+        <div>
+            <h5 class="mb-1">Household Questionnaire</h5>
+            <small class="text-muted">ID: <strong>10000483</strong></small>
+        </div>
         <button class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-pencil-square"></i> Edit
         </button>
@@ -17,46 +29,40 @@
 
     <hr />
 
-    <h6 class="mb-3">Plaintiff Factsheet Details</h6>
-    <div class="table-responsive mb-3">
-        <table class="table table-bordered align-middle text-nowrap">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Plaintiff Name</th>
-                    <th>Plaintiff Type</th>
-                    <th class="text-center">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Loop Plaintiffs -->
-                <tr>
-                    <td>11623</td>
-                    <td>TEST DF</td>
-                    <td>Individual</td>
-                    <td class="text-center"><button class="btn btn-outline-primary btn-sm">Review</button></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Conditional Block: Only render if Notice of Adoption exists -->
-    <div class="card bg-light p-3 shadow-sm ms-2 animate__animated animate__fadeIn border-light-red" id="noticeCard">
-        <div class="d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><strong>Notice of Adoption</strong></h6>
-            <button class="btn btn-primary btn-sm">Edit <i class="bi bi-arrow-right"></i></button>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Plaintiff Factsheet</h6>
+                    <div class="d-grid gap-2 mb-3">
+                        <button class="btn btn-outline-primary btn-xs">Review</button>
+                        <button class="btn btn-outline-success btn-xs">Generate</button>
+                    </div>
+                    <p class="mb-0 text-muted">Status: <span class="badge bg-info">In Progress</span></p>
+                </div>
+            </div>
         </div>
-        <div class="mt-2">
-            <p class="mb-0 text-muted">Adoption filed on: <strong>2024-12-01</strong></p>
-            <p class="mb-0 text-muted">Status: <span class="badge bg-success">Approved</span></p>
+
+        <div class="col-md-6">
+            <div class="card bg-light p-3 shadow-sm animate__animated animate__fadeIn border-light-red" id="noticeCard">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0"><strong>Notice of Adoption</strong></h6>
+                    <button class="btn btn-primary btn-sm">Edit <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div>
+                    <p class="mb-1 text-muted">Adoption filed on: <strong>2024-12-01</strong></p>
+                    <p class="mb-0 text-muted">Status: <span class="badge bg-success">Approved</span></p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    const hasNoticeOfAdoption = true; // replace with actual condition
     if (hasNoticeOfAdoption) {
         $('#noticeCard').slideDown();
     } else {
         $('#noticeCard').hide();
     }
-</script>   
+</script>
