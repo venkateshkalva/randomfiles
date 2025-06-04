@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DataTable with Child Rows</title>
+
+  <!-- jQuery + DataTables CSS/JS -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    td.details-control {
+      cursor: pointer;
+      text-align: center;
+      font-weight: bold;
+      width: 30px;
+    }
+    table.child-table {
+      border-collapse: collapse;
+      width: 80%;
+      margin: auto; /* centers the child table */
+    }
+    table.child-table th, table.child-table td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Parent Table with Expandable Child Rows</h2>
+
+<table id="parentTable" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th></th>
+      <th>ID</th>
+      <th>Status</th>
+      <th>Created By</th>
+      <th>Created Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="details-control">&#9654;</td> <!-- > -->
+      <td>101</td>
+      <td>Open</td>
+      <td>Alice</td>
+      <td>2025-06-01</td>
+    </tr>
+    <tr>
+      <td class="details-control">&#9654;</td>
+      <td>102</td>
+      <td>Closed</td>
+      <td>Bob</td>
+      <td>2025-06-02</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+  const childData = {
+    "101": [
+      { id: "1", name: "John Doe", type: "Primary" },
+      { id: "2", name: "Jane Smith", type: "Dependent" }
+    ],
+    "102": [
+      { id: "3", name: "Emily Rose", type: "Primary" }
+    ]
+  };
+
+  function formatChildTable(data) {
+  let html = '<div style="text-align:center;"><table class="child-table">';
+  html += '<thead><tr><th>Plaintiff ID</th><th>Name</th><th>Type</th></tr></thead><tbody>';
+  data.forEach(row => {
+    html += `<tr><td>${row.id}</td><td>${row.name}</td><td>${row.type}</td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+  $(document).ready(function () {
+    const table = $('#parentTable').DataTable({
+      paging: false,
+      searching: false,
+      info: false
+    });
+
+    $('#parentTable tbody').on('click', 'td.details-control', function () {
+      const tr = $(this).closest('tr');
+      const row = table.row(tr);
+      const recordId = tr.find('td:eq(1)').text();
+
+      if (row.child.isShown()) {
+        row.child.hide();
+        tr.find('td.details-control').html('&#9654;'); // >
+      } else {
+        const data = childData[recordId] || [];
+        row.child(formatChildTable(data)).show();
+        tr.find('td.details-control').html('&#9660;'); // v
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
