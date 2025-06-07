@@ -48,3 +48,28 @@ public void OnGet()
             WrongfulDeathYNID = x.WrongfulDeathYNID
         }).ToList();
 }
+
+
+@for (int i = 0; i < Model.NOAFormDS.HQLossLocationList.Count; i++)
+{
+    var ll = Model.NOAFormDS.HQLossLocationList[i];
+    <li>
+        <strong>Loss Locations @i</strong>
+        <input type="checkbox"
+               name="SelectedLossLocations[@i].AffectedAddressID"
+               value="@ll.AffectedAddressID"
+               checked />
+
+        <div>
+            <label>Wrongful Death</label>
+            @foreach (var yn in Model.AdditionalDamagesYNs)
+            {
+                <input type="radio"
+                       name="SelectedLossLocations[@i].WrongfulDeathYNID"
+                       value="@yn.Value"
+                       checked="@(Model.SelectedLossLocations?[i]?.WrongfulDeathYNID == yn.Value ? "checked" : null)" />
+                @yn.Text
+            }
+        </div>
+    </li>
+}
