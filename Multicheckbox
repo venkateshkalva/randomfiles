@@ -73,3 +73,8 @@ public void OnGet()
         </div>
     </li>
 }
+<div class="d-flex align-items-center mb-2">
+    <input type="checkbox" class="form-check-input mt-0 me-2" />
+    <h5 class="mb-0"><strong>Defendants</strong></h5>
+</div>
+
