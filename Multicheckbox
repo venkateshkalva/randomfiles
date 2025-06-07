@@ -37,3 +37,14 @@ public IActionResult OnPost()
 
     return Page();
 }
+
+
+public void OnGet()
+{
+    Model.SelectedLossLocations = Model.NOAFormDS.HQLossLocationList
+        .Select(x => new LossLocationInput
+        {
+            AffectedAddressID = x.AffectedAddressID,
+            WrongfulDeathYNID = x.WrongfulDeathYNID
+        }).ToList();
+}
