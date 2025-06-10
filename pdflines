@@ -1,59 +1,43 @@
-using System;
-using System.IO;
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
 using iText.Kernel.Font;
 using iText.IO.Font.Constants;
-using iText.Kernel.Pdf.Canvas;
-using iText.Kernel.Pdf.Canvas.Parser;
+using System.IO;
 
-class Program
+public byte[] AddMarginLineNumbersOnly(byte[] inputPdfBytes)
 {
-    static void Main(string[] args)
+    using var inputStream = new MemoryStream(inputPdfBytes);
+    using var outputStream = new MemoryStream();
+
+    using var reader = new PdfReader(inputStream);
+    using var writer = new PdfWriter(outputStream);
+    using var pdfDoc = new PdfDocument(reader, writer);
+
+    var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+    for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
     {
-        string inputPath = "input.pdf";
-        string outputPath = "output.pdf";
+        var page = pdfDoc.GetPage(i);
+        var canvas = new PdfCanvas(page);
 
-        byte[] inputBytes = File.ReadAllBytes(inputPath);
-        byte[] outputBytes = AddLineNumbersToPdf(inputBytes);
+        float x = 20; // Margin X
+        float y = page.GetPageSize().GetTop() - 40;
+        float lineHeight = 12;
 
-        File.WriteAllBytes(outputPath, outputBytes);
+        int lineCount = (int)((page.GetPageSize().GetHeight() - 80) / lineHeight);
 
-        Console.WriteLine("Line numbers added. Output saved to: " + outputPath);
-    }
-
-    static byte[] AddLineNumbersToPdf(byte[] inputPdfBytes)
-    {
-        using var inputStream = new MemoryStream(inputPdfBytes);
-        using var outputStream = new MemoryStream();
-
-        using var reader = new PdfReader(inputStream);
-        using var writer = new PdfWriter(outputStream);
-        using var pdfDoc = new PdfDocument(reader, writer);
-        var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
-
-        for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+        for (int ln = 1; ln <= lineCount; ln++)
         {
-            var page = pdfDoc.GetPage(i);
-            var text = PdfTextExtractor.GetTextFromPage(page);
-            var lines = text.Split('\n');
+            canvas.BeginText()
+                  .SetFontAndSize(font, 8)
+                  .MoveText(x, y)
+                  .ShowText($"{ln}")
+                  .EndText();
 
-            var canvas = new PdfCanvas(page);
-            float y = page.GetPageSize().GetTop() - 40;
-            float x = 20;
-            int lineNumber = 1;
-
-            foreach (var line in lines)
-            {
-                canvas.BeginText()
-                      .SetFontAndSize(font, 10)
-                      .MoveText(x, y)
-                      .ShowText($"{lineNumber++}. {line.Trim()}")
-                      .EndText();
-                y -= 12;
-            }
+            y -= lineHeight;
         }
-
-        pdfDoc.Close();
-        return outputStream.ToArray();
     }
+
+    pdfDoc.Close();
+    return outputStream.ToArray();
 }
