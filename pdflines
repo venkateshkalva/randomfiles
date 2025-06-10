@@ -38,3 +38,15 @@ public async Task AddLineNumbersToPdfAsync(Stream inputPdfStream, Stream outputP
 
     doc.Close();
 }
+
+
+BlobClient blobClient = containerClient.GetBlobClient("my.pdf");
+MemoryStream inputStream = new MemoryStream();
+await blobClient.DownloadToAsync(inputStream);
+inputStream.Position = 0;
+
+MemoryStream outputStream = new MemoryStream();
+await AddLineNumbersToPdfAsync(inputStream, outputStream);
+
+outputStream.Position = 0;
+await blobClient.UploadAsync(outputStream, overwrite: true);
