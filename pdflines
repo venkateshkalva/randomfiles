@@ -1,52 +1,59 @@
+using System;
 using System.IO;
 using iText.Kernel.Pdf;
-using iText.Layout;
-using iText.Layout.Element;
-using iText.IO.Source;
+using iText.Kernel.Font;
+using iText.IO.Font.Constants;
+using iText.Kernel.Pdf.Canvas;
 using iText.Kernel.Pdf.Canvas.Parser;
 
-public async Task AddLineNumbersToPdfAsync(Stream inputPdfStream, Stream outputPdfStream)
+class Program
 {
-    var pdfReader = new PdfReader(inputPdfStream);
-    var pdfWriter = new PdfWriter(outputPdfStream);
-    var pdfDoc = new PdfDocument(pdfReader, pdfWriter);
-    var doc = new Document(pdfDoc);
-
-    for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+    static void Main(string[] args)
     {
-        string pageText = PdfTextExtractor.GetTextFromPage(pdfDoc.GetPage(i));
-        var lines = pageText.Split('\n');
+        string inputPath = "input.pdf";
+        string outputPath = "output.pdf";
 
-        var page = pdfDoc.GetPage(i);
-        var canvas = new iText.Kernel.Pdf.Canvas.PdfCanvas(page);
+        byte[] inputBytes = File.ReadAllBytes(inputPath);
+        byte[] outputBytes = AddLineNumbersToPdf(inputBytes);
 
-        float y = page.GetPageSize().GetTop() - 20;
-        float x = 20;
+        File.WriteAllBytes(outputPath, outputBytes);
 
-        int lineNumber = 1;
-        foreach (var line in lines)
-        {
-            canvas.BeginText()
-                  .SetFontAndSize(iText.Kernel.Font.PdfFontFactory.CreateFont(), 10)
-                  .MoveText(x, y)
-                  .ShowText($"{lineNumber++}. {line}")
-                  .EndText();
-
-            y -= 12;
-        }
+        Console.WriteLine("Line numbers added. Output saved to: " + outputPath);
     }
 
-    doc.Close();
+    static byte[] AddLineNumbersToPdf(byte[] inputPdfBytes)
+    {
+        using var inputStream = new MemoryStream(inputPdfBytes);
+        using var outputStream = new MemoryStream();
+
+        using var reader = new PdfReader(inputStream);
+        using var writer = new PdfWriter(outputStream);
+        using var pdfDoc = new PdfDocument(reader, writer);
+        var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+
+        for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+        {
+            var page = pdfDoc.GetPage(i);
+            var text = PdfTextExtractor.GetTextFromPage(page);
+            var lines = text.Split('\n');
+
+            var canvas = new PdfCanvas(page);
+            float y = page.GetPageSize().GetTop() - 40;
+            float x = 20;
+            int lineNumber = 1;
+
+            foreach (var line in lines)
+            {
+                canvas.BeginText()
+                      .SetFontAndSize(font, 10)
+                      .MoveText(x, y)
+                      .ShowText($"{lineNumber++}. {line.Trim()}")
+                      .EndText();
+                y -= 12;
+            }
+        }
+
+        pdfDoc.Close();
+        return outputStream.ToArray();
+    }
 }
-
-
-BlobClient blobClient = containerClient.GetBlobClient("my.pdf");
-MemoryStream inputStream = new MemoryStream();
-await blobClient.DownloadToAsync(inputStream);
-inputStream.Position = 0;
-
-MemoryStream outputStream = new MemoryStream();
-await AddLineNumbersToPdfAsync(inputStream, outputStream);
-
-outputStream.Position = 0;
-await blobClient.UploadAsync(outputStream, overwrite: true);
