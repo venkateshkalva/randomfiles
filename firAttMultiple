@@ -1,0 +1,198 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+
+<div class="container mt-5">
+    <h3 class="fw-bold mb-4">Legal Management System</h3>
+    <h5 class="fw-semibold mb-3">Firm Management</h5>
+
+<button type="button" class="btn btn-success mb-3" onclick="showFirmForm()">Add Firm</button>
+
+<div id="firmForm" class="p-4 mb-4 rounded border bg-light" style="display:none;">
+    <h6 class="fw-bold mb-3 text-primary">Add New Firm</h6>
+    <div class="form-group">
+        <label for="firmNameInput">Firm Name:</label>
+        <input type="text" id="firmNameInput" class="form-control" placeholder="Enter firm name" />
+        <div id="firmValidationMessage" class="text-danger mt-2" style="display:none;"></div>
+    </div>
+    <button type="button" class="btn btn-primary mt-2" onclick="saveFirm()">Save Firm</button>
+    <button type="button" class="btn btn-secondary mt-2 ml-2" onclick="cancelFirm()">Cancel</button>
+</div>
+
+<div id="firmTableContainer" style="display:none;">
+<table id="firmTable" class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr><th>ID</th><th>Firm Name</th><th>Date Created</th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
+</div>
+
+<!-- placeholder; dynamically inserted with JS if needed -->
+
+<h2 class="mt-5">Attorneys</h2>
+<button type="button" class="btn btn-success mb-3" onclick="showAttorneyForm()">Add Attorney</button>
+
+<div id="attorneyForm" class="card p-3 mb-4" style="display:none;">
+    <div class="form-group">
+        <label for="attorneyName">Name:</label>
+        <input type="text" id="attorneyName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label for="attorneyAddress">Address:</label>
+        <input type="text" id="attorneyAddress" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label for="attorneyBar">Bar Number:</label>
+        <input type="text" id="attorneyBar" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label for="firmSelect">Firm:</label>
+        <select id="firmSelect" class="form-control"></select>
+    </div>
+    <button type="button" class="btn btn-primary mt-2" onclick="saveAttorney()">Save</button>
+    <button type="button" class="btn btn-secondary mt-2 ml-2" onclick="cancelAttorney()">Cancel</button>
+</div>
+
+<div id="attorneyTableContainer" style="display:none;">
+<table id="attorneyTable" class="table table-bordered table-striped">
+    <thead class="thead-dark">
+        <tr><th>Name</th><th>Firm</th><th>Bar Number</th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
+</div>
+
+<form method="post">
+    <input type="hidden" name="FirmListJson" id="FirmListJson" />
+    <input type="hidden" name="AttorneyListJson" id="AttorneyListJson" />
+    <button type="submit" class="btn btn-primary mt-4">Submit</button>
+</form>
+
+    <h5 class="fw-semibold mt-5">Attorney Management</h5>
+</div>
+
+<script>
+    const firms = [];
+    const attorneys = [];
+
+    function showFirmForm() {
+        document.getElementById('firmForm').style.display = 'block';
+    }
+
+    function showAttorneyForm() {
+        document.getElementById('attorneyForm').style.display = 'block';
+        updateFirmDropdown();
+    }
+
+    function saveFirm() {
+        const input = document.getElementById('firmNameInput');
+        const name = input.value.trim().replace(/\s+/g, '').toLowerCase();
+
+        if (!name) return;
+
+        const exists = firms.some(f => f.name.replace(/\s+/g, '').toLowerCase() === name);
+        if (exists) {
+            document.getElementById('firmValidationMessage').textContent = "Firm already exists with a similar name.";
+            document.getElementById('firmValidationMessage').style.display = 'block';
+            return;
+        }
+
+        firms.push({
+            id: firms.length + 1,
+            name: input.value.trim(),
+            created: new Date().toLocaleDateString()
+        });
+        document.getElementById('firmValidationMessage').style.display = 'none';
+        updateFirmTable();
+        input.value = '';
+        cancelFirm();
+    }
+
+    function saveAttorney() {
+        const name = document.getElementById('attorneyName').value;
+        const address = document.getElementById('attorneyAddress').value;
+        const bar = document.getElementById('attorneyBar').value;
+        const firm = document.getElementById('firmSelect').value;
+
+        if (name && firm) {
+            attorneys.push({ name, address, bar, firm });
+            updateAttorneyTable();
+            document.getElementById('attorneyName').value = '';
+            document.getElementById('attorneyAddress').value = '';
+            document.getElementById('attorneyBar').value = '';
+            document.getElementById('firmSelect').selectedIndex = 0;
+            cancelAttorney();
+        }
+    }
+
+    function updateFirmTable() {
+        const tbody = document.querySelector('#firmTable tbody');
+        tbody.innerHTML = '';
+
+        const header = document.createElement('h6');
+        header.className = 'fw-bold mt-4';
+        header.textContent = `Firms (${firms.length})`;
+        const existingHeader = document.getElementById('firmCountHeader');
+        if (existingHeader) existingHeader.remove();
+        document.getElementById('firmTableContainer').prepend(header);
+        header.id = 'firmCountHeader';
+
+        if (firms.length > 0) {
+            document.getElementById('firmTableContainer').style.display = 'block';
+            firms.forEach(f => {
+                tbody.innerHTML += `<tr><td>${f.id}</td><td>${f.name}</td><td>${f.created}</td></tr>`;
+            });
+        } else {
+            document.getElementById('firmTableContainer').style.display = 'none';
+        }
+    }
+
+    function updateFirmDropdown() {
+        const select = document.getElementById('firmSelect');
+        select.innerHTML = '';
+        const defaultOption = document.createElement('option');
+        defaultOption.text = '--Select--';
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        select.add(defaultOption);
+        firms.forEach(f => {
+            const option = document.createElement('option');
+            option.value = f.name;
+            option.text = f.name;
+            select.add(option);
+        });
+    }
+
+    function updateAttorneyTable() {
+        const tbody = document.querySelector('#attorneyTable tbody');
+        tbody.innerHTML = '';
+        if (attorneys.length > 0) {
+            document.getElementById('attorneyTableContainer').style.display = 'block';
+            attorneys.forEach(a => {
+                tbody.innerHTML += `<tr><td>${a.name}</td><td>${a.firm}</td><td>${a.bar}</td></tr>`;
+            });
+        } else {
+            document.getElementById('attorneyTableContainer').style.display = 'none';
+        }
+
+        // Set hidden fields before submit
+        document.getElementById('FirmListJson').value = JSON.stringify(firms);
+        document.getElementById('AttorneyListJson').value = JSON.stringify(attorneys);
+    }
+
+    function cancelFirm() {
+        document.getElementById('firmForm').style.display = 'none';
+    }
+
+    function cancelAttorney() {
+        document.getElementById('attorneyForm').style.display = 'none';
+    }
+</script>
