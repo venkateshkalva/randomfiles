@@ -1,0 +1,218 @@
+@page
+@model attorneyInfo.Pages.claim
+@{
+    ViewData["Title"] = "claim";
+}
+
+
+<h2>Initiate a Claim</h2>
+
+<div class="container mt-5">
+<form method="post">
+    <fieldset>
+        <legend>Tell Us About Yourself</legend>
+
+        <div class="form-group mb-3">
+            <label>First Name</label>
+            <input asp-for="FirstName" class="form-control" />
+        </div>
+        
+        <div class="form-group mb-3">
+            <label>Middle Name</label>
+            <input asp-for="MiddleName" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Last Name</label>
+            <input asp-for="LastName" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Suffix</label>
+            <select asp-for="Suffix" class="form-select">
+                <option value="">Select</option>
+                <option>Jr.</option>
+                <option>Sr.</option>
+                <option>III</option>
+            </select>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Your Mailing Address</legend>
+
+        <div class="form-group mb-3">
+            <label>Address 1</label>
+            <input asp-for="Address1" class="form-control" />
+        </div>
+        <div class="form-group mb-3">
+            <label>Address 2</label>
+            <input asp-for="Address2" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>City</label>
+            <input asp-for="City" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>State</label>
+            <select asp-for="State" class="form-select">
+                <option value="">Select...</option>
+                <option>CA</option>
+                <option>NY</option>
+            </select>
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Zip Code</label>
+            <input asp-for="ZipCode" class="form-control" />
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Your Contact Information</legend>
+
+        <div class="form-group mb-3">
+            <label>Email Address</label>
+            <input asp-for="Email" class="form-control" />
+        </div>
+        <div class="form-group mb-3">
+            <label>Confirm Email Address</label>
+            <input asp-for="ConfirmEmail" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Daytime Phone</label>
+            <input asp-for="DaytimePhone" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Mobile Phone</label>
+            <input asp-for="MobilePhone" class="form-control" />
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Business Claim</legend>
+        <div class="form-check mb-3">
+            <input type="radio" asp-for="IsBusinessClaim" value="true" class="form-check-input" id="businessClaimYes" />
+            <label class="form-check-label" for="businessClaimYes">Yes</label>
+        </div>
+        <div class="form-check mb-3">
+            <input type="radio" asp-for="IsBusinessClaim" value="false" class="form-check-input" id="businessClaimNo" />
+            <label class="form-check-label" for="businessClaimNo">No</label>
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Business Name</label>
+            <input asp-for="BusinessName" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Business Address 1</label>
+            <input asp-for="BusinessAddress1" class="form-control" />
+        </div>
+        <div class="form-group mb-3">
+            <label>Address 2</label>
+            <input asp-for="BusinessAddress2" class="form-control" />
+        </div>
+
+        <div class="form-group mb-3">
+            <label>City</label>
+            <input asp-for="BusinessCity" class="form-control" />
+        </div>
+        <div class="form-group mb-3">
+            <label>State</label>
+            <select asp-for="BusinessState" class="form-select">
+                <option value="">Select...</option>
+                <option>CA</option>
+            </select>
+        </div>
+
+        <div class="form-group mb-3">
+            <label>Zip Code</label>
+            <input asp-for="BusinessZipCode" class="form-control" />
+        </div>
+
+        <div class="form-check mb-3">
+            <input asp-for="AuthorizedToClaim" type="checkbox" class="form-check-input" id="authorizedToClaim" />
+            <label class="form-check-label" for="authorizedToClaim">
+                I certify I am authorized to initiate a claim on behalf of the business.
+            </label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Claim Type</legend>
+
+        <label>Claimant Type</label><br />
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="ClaimantType" value="Vessel Owner" class="form-check-input" id="claimantVesselOwner" />
+            <label class="form-check-label" for="claimantVesselOwner">Vessel Owner</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="ClaimantType" value="Vessel Lessee" class="form-check-input" id="claimantVesselLessee" />
+            <label class="form-check-label" for="claimantVesselLessee">Vessel Lessee</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="ClaimantType" value="Boat Captain" class="form-check-input" id="claimantBoatCaptain" />
+            <label class="form-check-label" for="claimantBoatCaptain">Boat Captain</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="ClaimantType" value="Crew Member" class="form-check-input" id="claimantCrewMember" />
+            <label class="form-check-label" for="claimantCrewMember">Crew Member</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="ClaimantType" value="Business Owner/Representative" class="form-check-input" id="claimantBusinessOwner" />
+            <label class="form-check-label" for="claimantBusinessOwner">Business Owner/Representative</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="ClaimantType" value="Other" class="form-check-input" id="claimantOther" />
+            <label class="form-check-label" for="claimantOther">Other</label>
+        </div>
+
+        <label>Sector</label><br />
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="Sector" value="Commercial Fishing" class="form-check-input" id="sectorCommercialFishing" />
+            <label class="form-check-label" for="sectorCommercialFishing">Commercial Fishing</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="Sector" value="For-Hire/Recreational Fishing" class="form-check-input" id="sectorForHire" />
+            <label class="form-check-label" for="sectorForHire">For-Hire/Recreational Fishing</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="radio" asp-for="Sector" value="Shore-side Business" class="form-check-input" id="sectorShoreSide" />
+            <label class="form-check-label" for="sectorShoreSide">Shoreside Business</label>
+        </div>
+
+        <label>Fishery</label><br />
+        <div class="form-check form-check-inline mb-3">
+            <input type="checkbox" asp-for="Fishery" value="Whelk" class="form-check-input" id="fisheryWhelk" />
+            <label class="form-check-label" for="fisheryWhelk">Whelk</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="checkbox" asp-for="Fishery" value="Spiny Dogfish" class="form-check-input" id="fisherySpinyDogfish" />
+            <label class="form-check-label" for="fisherySpinyDogfish">Spiny Dogfish</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="checkbox" asp-for="Fishery" value="Shrimp" class="form-check-input" id="fisheryShrimp" />
+            <label class="form-check-label" for="fisheryShrimp">Shrimp</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="checkbox" asp-for="Fishery" value="Black Sea Bass" class="form-check-input" id="fisheryBlackSeaBass" />
+            <label class="form-check-label" for="fisheryBlackSeaBass">Black Sea Bass</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="checkbox" asp-for="Fishery" value="Surfclam" class="form-check-input" id="fisherySurfclam" />
+            <label class="form-check-label" for="fisherySurfclam">Surfclam</label>
+        </div>
+        <div class="form-check form-check-inline mb-3">
+            <input type="checkbox" asp-for="Fishery" value="Other" class="form-check-input" id="fisheryOther" />
+            <label class="form-check-label" for="fisheryOther">Other</label>
+        </div>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+</div>
