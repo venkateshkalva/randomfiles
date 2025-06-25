@@ -216,3 +216,60 @@
     <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 </div>
+
+
+ [BindProperty]
+    public string FirstName { get; set; }
+
+    [BindProperty]
+    public string MiddleName { get; set; }
+
+    [BindProperty]
+    public string LastName { get; set; }
+
+    [BindProperty]
+    public string Suffix { get; set; }
+
+    [BindProperty]
+    public string Address1 { get; set; }
+    [BindProperty]
+    public string Address2 { get; set; }
+    [BindProperty]
+    public string City { get; set; }
+    [BindProperty]
+    public string State { get; set; }
+    [BindProperty]
+    public string ZipCode { get; set; }
+
+    [BindProperty]
+    public string Email { get; set; }
+    [BindProperty]
+    public string ConfirmEmail { get; set; }
+    [BindProperty]
+    public string DaytimePhone { get; set; }
+    [BindProperty]
+    public string MobilePhone { get; set; }
+
+    [BindProperty]
+    public bool IsBusinessClaim { get; set; }
+    [BindProperty]
+    public string BusinessName { get; set; }
+    [BindProperty]
+    public string BusinessAddress1 { get; set; }
+    [BindProperty]
+    public string BusinessAddress2 { get; set; }
+    [BindProperty]
+    public string BusinessCity { get; set; }
+    [BindProperty]
+    public string BusinessState { get; set; }
+    [BindProperty]
+    public string BusinessZipCode { get; set; }
+    [BindProperty]
+    public bool AuthorizedToClaim { get; set; }
+
+    [BindProperty]
+    public string ClaimantType { get; set; }
+    [BindProperty]
+    public string Sector { get; set; }
+    [BindProperty]
+    public string Fishery { get; set; }
