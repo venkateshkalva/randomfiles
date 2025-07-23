@@ -58,6 +58,57 @@
     </div>
 </div>
 
+<td>
+    @{
+        var fullText = Model.text ?? "";
+        var truncated = fullText.Length > 250 ? fullText.Substring(0, 250) : fullText;
+        var remaining = fullText.Length > 250 ? fullText.Substring(250) : "";
+        var id = $"desc-{Model.Id}"; // Or some unique ID per row
+    }
+
+    <span>@truncated</span>
+    @if (!string.IsNullOrEmpty(remaining))
+    {
+        <span class="more-text" id="@($"{id}-more")" style="display:none">@remaining</span>
+        <span class="read-more" data-target="@id">Read more</span>
+    }
+</td>
+
+<style>
+    .read-more {
+        color: blue;
+        cursor: pointer;
+        margin-left: 5px;
+        text-decoration: underline;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll(".read-more").forEach(function (el) {
+            el.addEventListener("click", function () {
+                const targetId = el.getAttribute("data-target");
+                const moreText = document.getElementById(`${targetId}-more`);
+                const isVisible = moreText.style.display === 'inline';
+
+                moreText.style.display = isVisible ? 'none' : 'inline';
+                el.textContent = isVisible ? 'Read more' : 'Read less';
+            });
+        });
+    });
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
 <script>
     const hasNoticeOfAdoption = true; // replace with actual condition
     if (hasNoticeOfAdoption) {
