@@ -130,4 +130,26 @@
     </div>
 </div>
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const collapseButtons = document.querySelectorAll('.card-header [data-bs-toggle="collapse"]');
+        collapseButtons.forEach(button => {
+            const targetId = button.getAttribute('data-bs-target');
+            const targetElement = document.querySelector(targetId);
+            const iconSpan = document.createElement('span');
+            iconSpan.classList.add('collapse-icon');
+            iconSpan.textContent = targetElement && targetElement.classList.contains('show') ? '−' : '+';
+            button.appendChild(iconSpan);
+
+            targetElement.addEventListener('hide.bs.collapse', () => {
+                iconSpan.textContent = '+';
+            });
+
+            targetElement.addEventListener('show.bs.collapse', () => {
+                iconSpan.textContent = '−';
+            });
+        });
+    });
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
