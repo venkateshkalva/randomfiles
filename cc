@@ -1,20 +1,28 @@
-const input = document.getElementById('decimalInput');
-const error = document.getElementById('errorMsg');
+public IActionResult OnPostEdit(MyFormData formData)
+{
+    var list = HttpContext.Session.GetObject<List<MyFormData>>(SessionKey) ?? new List<MyFormData>();
 
-input.addEventListener('input', () => {
-  const val = input.value;
+    var existing = list.FirstOrDefault(x => x.Id == formData.Id);
+    if (existing != null)
+    {
+        // Update only what’s needed; or use AutoMapper/etc.
+        existing.Name = formData.Name;
+        existing.SomeField = formData.SomeField;
+        // ...other fields
+    }
 
-  // Check if it's a valid number
-  const num = parseFloat(val);
+    HttpContext.Session.SetObject(SessionKey, list);
+    return RedirectToPage();
+}
 
-  // Match up to 6 decimal places
-  const validDecimal = /^\d{1,3}(\.\d{0,6})?$/;
+public IActionResult OnPostDelete(int id)
+{
+    var list = HttpContext.Session.GetObject<List<MyFormData>>(SessionKey) ?? new List<MyFormData>();
 
-  if (num > 100 || !validDecimal.test(val)) {
-    error.textContent = 'Max: 100.000000 and only 6 decimal places allowed';
-    // Trim invalid part
-    input.value = val.slice(0, -1);
-  } else {
-    error.textContent = '';
-  }
-});
+    var itemToRemove = list.FirstOrDefault(x => x.Id == id);
+    if (itemToRemove != null)
+        list.Remove(itemToRemove);
+
+    HttpContext.Session.SetObject(SessionKey, list);
+    return RedirectToPage();
+}
