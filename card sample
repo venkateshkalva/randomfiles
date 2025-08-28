@@ -1,119 +1,97 @@
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+<form id="quiz">
+  <fieldset data-q="q1">
+    <legend>Q1</legend>
+    <label><input type="radio" name="q1" value="yes"> Yes</label>
+    <label><input type="radio" name="q1" value="no"> No</label>
+    <label><input type="radio" name="q1" value="unknown"> Unknown</label>
+    <label><input type="radio" name="q1" value="not_included"> Not included</label>
+  </fieldset>
 
-<style>
-    .border-light-red {
-        border-left: 4px solid #f8d7da; /* light red */
-    }
-    .btn-xs {
-        padding: 0.25rem 0.4rem;
-        font-size: 0.75rem;
-        line-height: 1.2;
-        border-radius: 0.2rem;
-        width: auto;
-        max-width: 100px;
-    }
-</style>
+  <fieldset data-q="q2">
+    <legend>Q2</legend>
+    <label><input type="radio" name="q2" value="yes"> Yes</label>
+    <label><input type="radio" name="q2" value="no"> No</label>
+    <label><input type="radio" name="q2" value="unknown"> Unknown</label>
+  </fieldset>
 
-<div class="card shadow-sm p-4 mb-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h5 class="mb-1">Household Questionnaire</h5>
-            <small class="text-muted">ID: <strong>10000483</strong></small>
-        </div>
-        <button class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-pencil-square"></i> Edit
-        </button>
-    </div>
+  <fieldset data-q="q3">
+    <legend>Q3</legend>
+    <label><input type="radio" name="q3" value="yes"> Yes</label>
+    <label><input type="radio" name="q3" value="no"> No</label>
+    <label><input type="radio" name="q3" value="unknown"> Unknown</label>
+  </fieldset>
 
-    <hr />
-
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h6 class="card-title mb-3">Plaintiff Factsheet</h6>
-                    <div class="d-grid gap-2 mb-3">
-                        <button class="btn btn-outline-primary btn-xs">Review</button>
-                        <button class="btn btn-outline-success btn-xs">Generate</button>
-                    </div>
-                    <p class="mb-0 text-muted">Status: <span class="badge bg-info">In Progress</span></p>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card bg-light p-3 shadow-sm animate__animated animate__fadeIn border-light-red" id="noticeCard">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0"><strong>Notice of Adoption</strong></h6>
-                    <button class="btn btn-primary btn-sm">Edit <i class="bi bi-arrow-right"></i></button>
-                </div>
-                <div>
-                    <p class="mb-1 text-muted">Adoption filed on: <strong>2024-12-01</strong></p>
-                    <p class="mb-0 text-muted">Status: <span class="badge bg-success">Approved</span></p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<td>
-    @{
-        var fullText = Model.text ?? "";
-        var truncated = fullText.Length > 250 ? fullText.Substring(0, 250) : fullText;
-        var remaining = fullText.Length > 250 ? fullText.Substring(250) : "";
-        var id = $"desc-{Model.Id}"; // Or some unique ID per row
-    }
-
-    <span>@truncated</span>
-    @if (!string.IsNullOrEmpty(remaining))
-    {
-        <span class="more-text" id="@($"{id}-more")" style="display:none">@remaining</span>
-        <span class="read-more" data-target="@id">Read more</span>
-    }
-</td>
-
-<style>
-    .read-more {
-        color: blue;
-        cursor: pointer;
-        margin-left: 5px;
-        text-decoration: underline;
-    }
-</style>
+  <fieldset data-q="q4">
+    <legend>Q4</legend>
+    <label><input type="radio" name="q4" value="yes"> Yes</label>
+    <label><input type="radio" name="q4" value="no"> No</label>
+  </fieldset>
+</form>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll(".read-more").forEach(function (el) {
-            el.addEventListener("click", function () {
-                const targetId = el.getAttribute("data-target");
-                const moreText = document.getElementById(`${targetId}-more`);
-                const isVisible = moreText.style.display === 'inline';
+  // Order matters: earliest blocker wins
+  const questionOrder = ["q1", "q2", "q3", "q4"];
 
-                moreText.style.display = isVisible ? 'none' : 'inline';
-                el.textContent = isVisible ? 'Read more' : 'Read less';
-            });
-        });
+  // Values that disable all *later* questions
+  const rules = {
+    q1: new Set(["unknown", "not_included"]),
+    q2: new Set(["unknown"]),
+    q3: new Set(["unknown"]),
+    q4: new Set([]),
+  };
+
+  const form = document.getElementById("quiz");
+
+  function groupRadios(name) {
+    return Array.from(form.querySelectorAll(`input[type="radio"][name="${name}"]`));
+  }
+
+  function selectedValue(name) {
+    const r = groupRadios(name).find(i => i.checked);
+    return r ? r.value : null;
+  }
+
+  function setGroupDisabled(name, disabled) {
+    const inputs = groupRadios(name);
+    inputs.forEach(i => {
+      if (disabled) i.checked = false; // clear when disabling
+      i.disabled = disabled;
     });
-</script>
+    // Optional: visually disable fieldset
+    const fs = form.querySelector(`fieldset[data-q="${name}"]`);
+    if (fs) fs.toggleAttribute('disabled', disabled);
+  }
 
+  function updateState() {
+    // Start by enabling everything
+    questionOrder.forEach(q => setGroupDisabled(q, false));
 
-
-
-
-
-
-
-
-
-
-
-<script>
-    const hasNoticeOfAdoption = true; // replace with actual condition
-    if (hasNoticeOfAdoption) {
-        $('#noticeCard').slideDown();
-    } else {
-        $('#noticeCard').hide();
+    // Find the earliest question whose selected value blocks following ones
+    let earliestBlockIdx = -1;
+    for (let i = 0; i < questionOrder.length; i++) {
+      const q = questionOrder[i];
+      const v = selectedValue(q);
+      if (v && rules[q].has(v)) {
+        earliestBlockIdx = i;
+        break;
+      }
     }
+
+    // If a blocker exists, disable all *later* questions
+    if (earliestBlockIdx >= 0) {
+      for (let j = earliestBlockIdx + 1; j < questionOrder.length; j++) {
+        setGroupDisabled(questionOrder[j], true);
+      }
+    }
+  }
+
+  // Wire up listeners
+  questionOrder.forEach(q => {
+    groupRadios(q).forEach(radio => {
+      radio.addEventListener("change", updateState);
+    });
+  });
+
+  // Initial pass on load
+  updateState();
 </script>
