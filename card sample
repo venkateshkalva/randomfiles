@@ -95,3 +95,41 @@
   // Initial pass on load
   updateState();
 </script>
+
+
+// grab the button once
+const addOtherPPBtn = document.getElementById('addOtherPPBtn');
+
+function updateState() {
+  // ... your existing enable-all, compute earliestBlockIdx, disable later groups ...
+
+  // Button rule
+  const isBlocked = earliestBlockIdx >= 0;
+  const lastEnabledIdx = isBlocked ? earliestBlockIdx : questionOrder.length - 1;
+  const allEnabledAnswered = questionOrder
+    .slice(0, lastEnabledIdx + 1)
+    .every(q => selectedValue(q) !== null);
+
+  const shouldDisable = isBlocked || !allEnabledAnswered;
+
+  if (addOtherPPBtn) {
+    // 1) explicit property
+    addOtherPPBtn.disabled = shouldDisable;
+
+    // 2) keep HTML attribute in sync (covers cases where someone set it via setAttribute)
+    if (shouldDisable) {
+      addOtherPPBtn.setAttribute('disabled', '');
+      addOtherPPBtn.classList.add('disabled'); // if you use Bootstrap styling
+      addOtherPPBtn.setAttribute('aria-disabled', 'true');
+    } else {
+      addOtherPPBtn.removeAttribute('disabled');
+      addOtherPPBtn.classList.remove('disabled');
+      addOtherPPBtn.removeAttribute('aria-disabled');
+
+      // 3) if the button lives inside a disabled fieldset, it will STILL be disabled.
+      //    Either move the button out, or force the nearest fieldset to enabled:
+      const disabledFs = addOtherPPBtn.closest('fieldset[disabled]');
+      if (disabledFs) disabledFs.disabled = false; // (or, better: place the button outside that fieldset)
+    }
+  }
+}
