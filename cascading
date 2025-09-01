@@ -1,0 +1,78 @@
+const form = document.getElementById("OtherPPForm");
+
+// ----- helpers
+function setBoolAttr(el, attr, on) {
+  if (on) el.setAttribute(attr, "");
+  else el.removeAttribute(attr);
+}
+function setDisabled(el, disabled) {
+  el.disabled = !!disabled;
+  if (disabled) el.setAttribute("disabled", "");
+  else el.removeAttribute("disabled");
+}
+
+// ----- 1) Capture original "required" state (once, on load)
+const originalRequired = new Map();   // key -> boolean
+// key scheme: radios use "radio:<groupName>", others use element reference
+(function captureRequired() {
+  // radios: keep one entry per group
+  const radioGroups = new Set(
+    Array.from(form.querySelectorAll('input[type="radio"]')).map(r => r.name)
+  );
+  radioGroups.forEach(name => {
+    const first = form.querySelector(`input[type="radio"][name="${name}"]`);
+    originalRequired.set(`radio:${name}`, first?.hasAttribute("required") || false);
+  });
+
+  // text/select/textarea: per element
+  Array.from(form.querySelectorAll('input[type="text"], select, textarea'))
+    .forEach(el => originalRequired.set(el, el.hasAttribute("required")));
+})();
+
+// ----- 2) Required toggler that RESTORES original requirements
+function setGroupRequired(name, enabled) {
+  // radios (group-level)
+  const radios = Array.from(form.querySelectorAll(`input[type="radio"][name="${name}"]`));
+  if (radios.length) {
+    // clear on all radios first
+    radios.forEach(r => setBoolAttr(r, "required", false));
+    const wantRequired = enabled && originalRequired.get(`radio:${name}`) === true;
+    // HTML needs required only on ONE radio in the group
+    setBoolAttr(radios[0], "required", wantRequired);
+  }
+
+  // text/select/textarea by *prefix* (adjust if you use a different grouping rule)
+  const prefix = name.replace(/\.\w+$/, "");
+  Array.from(form.querySelectorAll(
+    `input[type="text"][name^="${prefix}"],
+     select[name^="${prefix}"],
+     textarea[name^="${prefix}"]`
+  )).forEach(el => {
+    const wantRequired = enabled && originalRequired.get(el) === true;
+    setBoolAttr(el, "required", wantRequired);
+  });
+}
+
+// ----- 3) Your existing enable/disable, now kept in sync with required
+function setGroupDisabled(name, disabled) {
+  // radios
+  Array.from(form.querySelectorAll(`input[type="radio"][name="${name}"]`))
+    .forEach(r => { if (disabled) r.checked = false; setDisabled(r, disabled); });
+
+  // text/select/textarea (same prefix rule)
+  const prefix = name.replace(/\.\w+$/, "");
+  Array.from(form.querySelectorAll(
+    `input[type="text"][name^="${prefix}"],
+     select[name^="${prefix}"],
+     textarea[name^="${prefix}"]`
+  )).forEach(el => {
+    if (disabled) {
+      if (el.tagName === "SELECT") el.selectedIndex = -1;
+      else el.value = "";
+    }
+    setDisabled(el, disabled);
+  });
+
+  // 🔁 keep required aligned (restore on enable, remove on disable)
+  setGroupRequired(name, !disabled);
+}
