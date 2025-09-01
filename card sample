@@ -203,3 +203,11 @@ function setGroupRequired(name, required) {
      textarea[name^="${prefix}"]`
   )).forEach(el => setBoolAttr(el, 'required', required));
 }
+
+// Prevent submit if invalid and show native messages
+form.addEventListener('submit', (e) => {
+  if (!form.checkValidity()) {
+    e.preventDefault();
+    form.reportValidity();
+  }
+});
