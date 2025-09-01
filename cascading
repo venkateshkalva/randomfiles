@@ -76,3 +76,122 @@ function setGroupDisabled(name, disabled) {
   // 🔁 keep required aligned (restore on enable, remove on disable)
   setGroupRequired(name, !disabled);
 }
+
+
+
+
+
+
+ private void ApplyCascadeRelaxations()
+    {
+        // ----- 1) ORDER: earliest question first -----
+        // Put only the *question groups* here, not every single property.
+        var questionOrder = new[]
+        {
+            nameof(crppformdata.FireTypeID),            // Q1
+            nameof(crppformdata.PerimeterTypeID),       // Q2
+            nameof(crppformdata.IsProofOfDamage),       // Q3
+            nameof(crppformdata.DamageTypeID),          // Q4
+            nameof(crppformdata.IsDamageNotRelated),
+            nameof(crppformdata.RelationshipTypeID),
+            nameof(crppformdata.IsClaimantClaimContents),
+            nameof(crppformdata.IsClearRationale),
+            nameof(crppformdata.IsAssertedAutoMobile),
+            nameof(crppformdata.AmountProvided),        // start of "amount" group
+            nameof(crppformdata.IsDiscretionaryReview)  // start of "rationale" group
+        };
+
+        // ----- 2) GROUP MEMBERS: each question key -> all properties that belong to it -----
+        // Add siblings like text/select/textarea here so their [Required] is relaxed together.
+        var groups = new Dictionary<string, string[]>
+        {
+            { nameof(crppformdata.FireTypeID),              new[]{ nameof(crppformdata.FireTypeID) } },
+            { nameof(crppformdata.PerimeterTypeID),         new[]{ nameof(crppformdata.PerimeterTypeID) } },
+            { nameof(crppformdata.IsProofOfDamage),         new[]{ nameof(crppformdata.IsProofOfDamage) } },
+            { nameof(crppformdata.DamageTypeID),            new[]{ nameof(crppformdata.DamageTypeID) } },
+            { nameof(crppformdata.IsDamageNotRelated),      new[]{ nameof(crppformdata.IsDamageNotRelated) } },
+            { nameof(crppformdata.RelationshipTypeID),      new[]{ nameof(crppformdata.RelationshipTypeID) } },
+            { nameof(crppformdata.IsClaimantClaimContents), new[]{ nameof(crppformdata.IsClaimantClaimContents) } },
+            { nameof(crppformdata.IsClearRationale),        new[]{ nameof(crppformdata.IsClearRationale) } },
+            { nameof(crppformdata.IsAssertedAutoMobile),    new[]{ nameof(crppformdata.IsAssertedAutoMobile) } },
+
+            // Amount group: bool + textbox
+            { nameof(crppformdata.AmountProvided),          new[]{ nameof(crppformdata.AmountProvided),
+                                                                  nameof(crppformdata.ProvidedAmountValue) } },
+
+            // Discretionary/rationale group: selector + textbox
+            { nameof(crppformdata.IsDiscretionaryReview),   new[]{ nameof(crppformdata.IsDiscretionaryReview),
+                                                                  nameof(crppformdata.RationalAmountValue) } },
+        };
+
+        // ----- 3) BLOCK RULES: which answers disable *all later* questions -----
+        // Use int? for radios/selects. A special value "ANY" means "any non-null selection blocks later".
+        var blockRules = new Dictionary<string, HashSet<int>>
+        {
+            { nameof(crppformdata.FireTypeID),            new (new[]{ 4, 5 }) }, // Q1: NotIncluded/Unknown
+            { nameof(crppformdata.PerimeterTypeID),       new (new[]{ 3 }) },    // Q2: Unknown
+            { nameof(crppformdata.IsProofOfDamage),       new (new[]{ 2 }) },    // Q3: Unknown
+            // Q4 blocks later if ANY choice is made:
+            // represent "ANY" by using an empty set and handling it specially below
+            { nameof(crppformdata.DamageTypeID),          new HashSet<int>() }
+        };
+
+        // ----- Walk the order, locate earliest blocker -----
+        int earliestBlockIdx = -1;
+
+        for (int i = 0; i < questionOrder.Length; i++)
+        {
+            var key = questionOrder[i];
+
+            // look up value on the model via simple switch (fast & explicit)
+            int? val = key switch
+            {
+                nameof(crppformdata.FireTypeID)            => crppformdata.FireTypeID,
+                nameof(crppformdata.PerimeterTypeID)       => crppformdata.PerimeterTypeID,
+                nameof(crppformdata.IsProofOfDamage)       => crppformdata.IsProofOfDamage,
+                nameof(crppformdata.DamageTypeID)          => crppformdata.DamageTypeID,
+                nameof(crppformdata.IsDamageNotRelated)    => crppformdata.IsDamageNotRelated,
+                nameof(crppformdata.RelationshipTypeID)    => crppformdata.RelationshipTypeID,
+                nameof(crppformdata.IsClaimantClaimContents)=> crppformdata.IsClaimantClaimContents,
+                nameof(crppformdata.IsClearRationale)      => crppformdata.IsClearRationale,
+                nameof(crppformdata.IsAssertedAutoMobile)  => crppformdata.IsAssertedAutoMobile,
+                nameof(crppformdata.AmountProvided)        => crppformdata.AmountProvided.HasValue ? (crppformdata.AmountProvided.Value ? 1 : 0) : (int?)null,
+                nameof(crppformdata.IsDiscretionaryReview) => crppformdata.IsDiscretionaryReview,
+                _ => null
+            };
+
+            if (!blockRules.ContainsKey(key)) continue;
+
+            var rule = blockRules[key];
+
+            // "ANY": empty set means any non-null value blocks later
+            bool isBlocking = rule.Count == 0
+                              ? val.HasValue
+                              : (val.HasValue && rule.Contains(val.Value));
+
+            if (isBlocking)
+            {
+                earliestBlockIdx = i;
+                break;
+            }
+        }
+
+        if (earliestBlockIdx >= 0)
+        {
+            // disable/relax all LATER groups
+            for (int j = earliestBlockIdx + 1; j < questionOrder.Length; j++)
+            {
+                var groupKey = questionOrder[j];
+                if (groups.TryGetValue(groupKey, out var props))
+                    RemoveProps(props);
+                else
+                    RemoveProps(groupKey);
+            }
+        }
+    }
+
+    private void RemoveProps(params string[] propertyNames)
+    {
+        foreach (var name in propertyNames)
+            ModelState.Remove($"crppformdata.{name}");
+    }
