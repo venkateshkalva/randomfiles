@@ -150,3 +150,31 @@ function setDisabled(el, disabled) {
       setDisabled(el, disabled);
     }
   });
+
+// grab once
+const notesTA = document.getElementById('OtherPropertyForm_OtherPersonalPropertyName');
+
+function setDisabled(el, disabled) {
+  el.disabled = !!disabled;
+  if (disabled) el.setAttribute('disabled','');
+  else el.removeAttribute('disabled');
+}
+
+function setGroupDisabled(name, disabled) {
+  // radios for this group (unchanged)
+  Array.from(form.querySelectorAll(`input[type="radio"][name="${name}"]`))
+    .forEach(r => { if (disabled) r.checked = false; setDisabled(r, disabled); });
+
+  // text/select/textarea by prefix (keep if you have any)
+  const prefix = name.replace(/\.\w+$/, '');
+  Array.from(form.querySelectorAll(
+    `input[type="text"][name^="${prefix}"], select[name^="${prefix}"], textarea[name^="${prefix}"]`
+  )).forEach(el => { if (disabled) { if (el.tagName==='SELECT') el.selectedIndex=-1; else el.value=''; }
+                     setDisabled(el, disabled); });
+
+  // 🔹 one-off textarea by id (no mapping needed)
+  if (name === 'OtherPropertyForm.OtherPersonalPropertyName' && notesTA) {
+    if (disabled) notesTA.value = '';
+    setDisabled(notesTA, disabled);
+  }
+}
