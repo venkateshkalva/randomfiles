@@ -133,3 +133,20 @@ function updateState() {
     }
   }
 }
+
+function setDisabled(el, disabled) {
+  el.disabled = !!disabled;
+  if (disabled) el.setAttribute('disabled', '');
+  else el.removeAttribute('disabled');
+}
+
+  // explicit extras (like a textarea that doesn't share the prefix)
+  (extraByGroup[name] || []).forEach(sel => {
+    const el = form.querySelector(sel);
+    if (el) {
+      if (disabled) {
+        if (el.tagName === "TEXTAREA") el.value = "";
+      }
+      setDisabled(el, disabled);
+    }
+  });
