@@ -178,3 +178,28 @@ function setGroupDisabled(name, disabled) {
     setDisabled(notesTA, disabled);
   }
 }
+
+
+// Put these near your other helpers
+function setBoolAttr(el, attr, on) {
+  if (on) el.setAttribute(attr, '');
+  else el.removeAttribute(attr);
+}
+
+function setGroupRequired(name, required) {
+  // Radios: set `required` on the FIRST radio only (HTML treats the whole group as required)
+  const radios = Array.from(form.querySelectorAll(`input[type="radio"][name="${name}"]`));
+  if (radios.length) {
+    // Clear required on all, then set on the first one if needed
+    radios.forEach(r => setBoolAttr(r, 'required', false));
+    setBoolAttr(radios[0], 'required', required);
+  }
+
+  // Text / Select / Textarea that belong to the same logical question (by name prefix)
+  const prefix = name.replace(/\.\w+$/, '');
+  Array.from(form.querySelectorAll(
+    `input[type="text"][name^="${prefix}"],
+     select[name^="${prefix}"],
+     textarea[name^="${prefix}"]`
+  )).forEach(el => setBoolAttr(el, 'required', required));
+}
