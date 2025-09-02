@@ -1,147 +1,170 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 
 namespace YourApp.Validation
 {
-    public enum When
-    {
-        Equals,         // other == any(values)
-        NotEquals,      // other != all(values)
-        In,             // other in values
-        NotIn,          // other not in values
-        Null,           // other is null
-        NotNull         // other is NOT null
-    }
-
     /// <summary>
-    /// Makes the annotated property required when the condition on another property is true.
-    /// Server-side only (keeps it simple & reliable). Client can still show HTML5 'required' if you want.
+    /// Makes the decorated property REQUIRED unless ANY of the given
+    /// "blockers" is active. A blocker is either:
+    ///   - another property IN {values}
+    ///   - or "ANY" meaning the other property has any non-null value
+    /// Example:
+    /// [RequiredUnlessBlocked(nameof(FireTypeID), 4,5, nameof(PerimeterTypeID), 3)]
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
-    public sealed class RequiredWhenAttribute : ValidationAttribute
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+    public sealed class RequiredUnlessBlockedAttribute : ValidationAttribute
     {
-        public string OtherProperty { get; }
-        public When Mode { get; }
-        public object[] Values { get; }
+        public const string ANY = "__ANY__";
 
-        public RequiredWhenAttribute(string otherProperty, When mode, params object[] values)
+        private readonly (string otherProp, string[] tokens)[] _blockers;
+
+        // params come as pairs: propName, values... then next propName, values...
+        public RequiredUnlessBlockedAttribute(params object[] spec)
         {
-            OtherProperty = otherProperty ?? throw new ArgumentNullException(nameof(otherProperty));
-            Mode = mode;
-            Values = values ?? Array.Empty<object>();
-            // fallback message
-            ErrorMessage = ErrorMessage ?? "This field is required.";
+            if (spec == null || spec.Length == 0)
+                throw new ArgumentException("Specify at least one blocker.");
+            var list = new List<(string, string[])>();
+
+            int i = 0;
+            while (i < spec.Length)
+            {
+                if (spec[i] is not string propName)
+                    throw new ArgumentException($"Expected property name at index {i}");
+                i++;
+
+                // collect following tokens until next string (prop name) or end
+                var vals = new List<string>();
+                while (i < spec.Length && spec[i] is not string)
+                {
+                    vals.Add(spec[i]?.ToString());
+                    i++;
+                }
+                if (vals.Count == 0)
+                    throw new ArgumentException($"No values provided for blocker '{propName}'. " +
+                                                $"Use {nameof(RequiredUnlessBlockedAttribute)}.{nameof(ANY)} for 'any selection'.");
+
+                list.Add((propName, vals.ToArray()));
+            }
+            _blockers = list.ToArray();
+
+            ErrorMessage ??= "This field is required.";
         }
 
         protected override ValidationResult IsValid(object value, ValidationContext context)
         {
-            var otherProp = context.ObjectType.GetProperty(OtherProperty,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-
-            if (otherProp == null)
-                throw new InvalidOperationException($"Property '{OtherProperty}' not found on {context.ObjectType.Name}");
-
-            var otherVal = otherProp.GetValue(context.ObjectInstance);
-
-            bool condition = Mode switch
-            {
-                When.Equals   => Values.Any(v => EqualsNormalized(otherVal, v)),
-                When.NotEquals=> Values.All(v => !EqualsNormalized(otherVal, v)),
-                When.In       => Values.Any(v => EqualsNormalized(otherVal, v)),
-                When.NotIn    => Values.All(v => !EqualsNormalized(otherVal, v)),
-                When.Null     => otherVal == null,
-                When.NotNull  => otherVal != null,
-                _ => false
-            };
-
-            if (!condition)            // condition not true => not required
+            // If ANY blocker is active -> not required
+            if (IsAnyBlockerActive(context.ObjectInstance, context.ObjectType))
                 return ValidationResult.Success;
 
-            // condition true => enforce required
+            // Otherwise required:
             if (!IsPresent(value))
                 return new ValidationResult(ErrorMessage);
 
             return ValidationResult.Success;
         }
 
+        private bool IsAnyBlockerActive(object instance, Type type)
+        {
+            foreach (var (propName, tokens) in _blockers)
+            {
+                var pi = type.GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (pi == null) throw new InvalidOperationException($"Property '{propName}' not found on {type.Name}.");
+
+                var otherVal = pi.GetValue(instance);
+
+                // ANY = any non-null value is a blocker
+                if (tokens.Length == 1 && tokens[0] == ANY)
+                {
+                    if (otherVal != null) return true;
+                    continue;
+                }
+
+                // Compare using int first, then string compare
+                if (otherVal != null)
+                {
+                    foreach (var t in tokens)
+                    {
+                        if (EqualsNormalized(otherVal, t))
+                            return true; // blocker matched
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static bool EqualsNormalized(object a, string token)
+        {
+            if (a == null) return false;
+
+            if (int.TryParse(a.ToString(), out var ia) && int.TryParse(token, out var ib))
+                return ia == ib;
+
+            return string.Equals(a.ToString(), token, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsPresent(object v)
         {
             if (v == null) return false;
             if (v is string s) return !string.IsNullOrWhiteSpace(s);
-            if (v is bool?) return ((bool?)v).HasValue;
-            if (v is int?)  return ((int?)v).HasValue;
-            if (v is decimal?) return ((decimal?)v).HasValue;
-            return true; // for most structs/classes that are bound
-        }
-
-        private static bool EqualsNormalized(object a, object b)
-        {
-            if (a == null || b == null) return a == b;
-
-            // Try int comparison first (common for your IDs)
-            if (int.TryParse(a.ToString(), out var ia) && int.TryParse(b.ToString(), out var ib))
-                return ia == ib;
-
-            return a.ToString()?.Equals(b.ToString(), StringComparison.OrdinalIgnoreCase) == true;
+            if (v is int? i) return i.HasValue;
+            if (v is bool? b) return b.HasValue;
+            if (v is decimal? d) return d.HasValue;
+            return true;
         }
     }
 }
 
 using YourApp.Validation;
-using static YourApp.Validation.When;
+using static YourApp.Validation.RequiredUnlessBlockedAttribute;
 
 public class CRPPFormData
 {
     public int? CRPersonalPropertyID { get; set; }
 
-    // Q1
-    [RequiredWhen(nameof(FireTypeID), NotNull, ErrorMessage = "Fire type is required.")] // optional: keep simple Required for Q1 if you prefer
+    // Q1 itself can keep simple Required if you like, or leave for server to handle:
+    [Required(ErrorMessage = "Fire type is required.")]
     public int? FireTypeID { get; set; }
 
-    // Q2: required iff Q1 is NOT 4/5
-    [RequiredWhen(nameof(FireTypeID), NotIn, 4, 5, ErrorMessage = "Perimeter type is required.")]
+    // Q2 is required unless Q1 is a blocker (4 or 5)
+    [RequiredUnlessBlocked(nameof(FireTypeID), 4, 5, ErrorMessage = "Perimeter type is required.")]
     public int? PerimeterTypeID { get; set; }
 
-    // Q3: required iff Q1 not 4/5 AND Q2 != 3
-    [RequiredWhen(nameof(FireTypeID), NotIn, 4, 5, ErrorMessage = "Proof of Damage is required.")]
-    [RequiredWhen(nameof(PerimeterTypeID), NotEquals, 3, ErrorMessage = "Proof of Damage is required.")]
+    // Q3 is required unless (Q1 in 4/5) OR (Q2 == 3)
+    [RequiredUnlessBlocked(nameof(FireTypeID), 4, 5,
+                           nameof(PerimeterTypeID), 3,
+                           ErrorMessage = "Proof of Damage is required.")]
     public int? IsProofOfDamage { get; set; }
 
-    // Q4: required iff Q1 not 4/5 AND Q2 != 3 AND Q3 != 2
-    [RequiredWhen(nameof(FireTypeID), NotIn, 4, 5, ErrorMessage = "Damage level is required.")]
-    [RequiredWhen(nameof(PerimeterTypeID), NotEquals, 3, ErrorMessage = "Damage level is required.")]
-    [RequiredWhen(nameof(IsProofOfDamage), NotEquals, 2, ErrorMessage = "Damage level is required.")]
+    // Q4 is required unless (Q1 in 4/5) OR (Q2 == 3) OR (Q3 == 2)
+    [RequiredUnlessBlocked(nameof(FireTypeID), 4, 5,
+                           nameof(PerimeterTypeID), 3,
+                           nameof(IsProofOfDamage), 2,
+                           ErrorMessage = "Damage level is required.")]
     public int? DamageTypeID { get; set; }
 
-    // Q5: required iff (no earlier blocker) AND (Q4 is NOT selected)
-    [RequiredWhen(nameof(FireTypeID), NotIn, 4, 5, ErrorMessage = "This is required.")]
-    [RequiredWhen(nameof(PerimeterTypeID), NotEquals, 3, ErrorMessage = "This is required.")]
-    [RequiredWhen(nameof(IsProofOfDamage), NotEquals, 2, ErrorMessage = "This is required.")]
-    [RequiredWhen(nameof(DamageTypeID), Null,         ErrorMessage = "This is required when Q4 is not chosen.")]
+    // Q5 is required unless (any earlier blocker) OR (Q4 has ANY selection)
+    [RequiredUnlessBlocked(nameof(FireTypeID), 4, 5,
+                           nameof(PerimeterTypeID), 3,
+                           nameof(IsProofOfDamage), 2,
+                           nameof(DamageTypeID), ANY,
+                           ErrorMessage = "This field is required.")]
     public int? IsDamageNotRelated { get; set; }
 
-    // …continue the chain for the rest:
-    [RequiredWhen(nameof(FireTypeID), NotIn, 4, 5, ErrorMessage = "Relationship is required.")]
-    [RequiredWhen(nameof(PerimeterTypeID), NotEquals, 3)]
-    [RequiredWhen(nameof(IsProofOfDamage), NotEquals, 2)]
-    [RequiredWhen(nameof(DamageTypeID), Null)]
-    public int? RelationshipTypeID { get; set; }
-
-    // Examples of paired fields
-    // AmountProvidedValue required only if AmountProvided == true
+    // Pair examples
     public bool? AmountProvided { get; set; }
 
-    [RequiredWhen(nameof(AmountProvided), Equals, true, ErrorMessage = "Amount value is required.")]
+    // ProvidedAmountValue required unless AmountProvided is NOT true (i.e., required only when true)
+    [RequiredUnlessBlocked(nameof(AmountProvided), false, ErrorMessage = "Amount value is required.")]
     public string ProvidedAmountValue { get; set; }
 
     public int? IsDiscretionaryReview { get; set; }
 
-    // RationalAmountValue required only if IsDiscretionaryReview indicates "Yes" (use the right code)
-    [RequiredWhen(nameof(IsDiscretionaryReview), Equals, 1, ErrorMessage = "Rationale amount value is required.")]
+    // RationalAmountValue required unless IsDiscretionaryReview != 1 (adjust code as needed)
+    [RequiredUnlessBlocked(nameof(IsDiscretionaryReview), 0, ErrorMessage = "Rationale amount value is required.")]
     public string RationalAmountValue { get; set; }
 
-    // …and so on for the remaining fields you showed (IsClaimantClaimContents, IsClearRationale, etc.)
-    // For each, stack RequiredWhen attributes so they’re required only when all earlier blockers are NOT selected.
+    // Add remaining fields similarly…
 }
