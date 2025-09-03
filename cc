@@ -1,28 +1,45 @@
-public IActionResult OnPostEdit(MyFormData formData)
+// Define once (inside the page/model class)
+private static void AppendCitationTable(
+    StringBuilder sb,
+    IEnumerable<CitationItem> items,   // <-- replace with your real type
+    long crcClaimId,
+    int commentTypeId)
 {
-    var list = HttpContext.Session.GetObject<List<MyFormData>>(SessionKey) ?? new List<MyFormData>();
-
-    var existing = list.FirstOrDefault(x => x.Id == formData.Id);
-    if (existing != null)
+    foreach (var item in items)
     {
-        // Update only what’s needed; or use AutoMapper/etc.
-        existing.Name = formData.Name;
-        existing.SomeField = formData.SomeField;
-        // ...other fields
+        sb.Append("<Table1>");
+        sb.Append(GenerateTag("CRCClaimID",  crcClaimId));
+        sb.Append(GenerateTag("CRCommentID", item.CRCommentID));
+        sb.Append(GenerateTag("CRCommentTypeID", commentTypeId));
+        sb.Append(GenerateTag("DocID",       item.DocID));
+        sb.Append(GenerateTag("PageFrom",    item.PageFrom));
+        sb.Append(GenerateTag("PageTo",      item.PageTo));
+        sb.Append(GenerateTag("Comments",    item.Comments));
+        sb.Append("</Table1>");
     }
-
-    HttpContext.Session.SetObject(SessionKey, list);
-    return RedirectToPage();
 }
 
-public IActionResult OnPostDelete(int id)
+var sources = new[]
 {
-    var list = HttpContext.Session.GetObject<List<MyFormData>>(SessionKey) ?? new List<MyFormData>();
+    (Items: AssertedDamageTypeList,  TypeId: 83),
+    (Items: PerimeterTypeList,       TypeId: 84),
+    (Items: PropertyDamageLevelList, TypeId: 85),
+};
 
-    var itemToRemove = list.FirstOrDefault(x => x.Id == id);
-    if (itemToRemove != null)
-        list.Remove(itemToRemove);
-
-    HttpContext.Session.SetObject(SessionKey, list);
-    return RedirectToPage();
+foreach (var src in sources)
+{
+    if (src.Items != null && src.Items.Count > 0)
+        AppendCitationTable(docCitationXML, src.Items, CRCClaimID, src.TypeId);
 }
+
+if (AssertedDamageTypeList?.Count > 0)
+    AppendCitationTable(docCitationXML, AssertedDamageTypeList, CRCClaimID, 83,
+        x => x.CRCommentID, x => x.DocID, x => x.PageFrom, x => x.PageTo, x => x.Comments);
+
+if (PerimeterTypeList?.Count > 0)
+    AppendCitationTable(docCitationXML, PerimeterTypeList, CRCClaimID, 84,
+        x => x.CRCommentID, x => x.DocID, x => x.PageFrom, x => x.PageTo, x => x.Comments);
+
+if (PropertyDamageLevelList?.Count > 0)
+    AppendCitationTable(docCitationXML, PropertyDamageLevelList, CRCClaimID, 85,
+        x => x.CRCommentID, x => x.DocID, x => x.PageFrom, x => x.PageTo, x => x.Comments);
