@@ -1,24 +1,28 @@
 // Define once (inside the page/model class)
-private static void AppendCitationTable(
+private static void AppendCitationTable<T>(
     StringBuilder sb,
-    IEnumerable<CitationItem> items,   // <-- replace with your real type
+    IEnumerable<T> items,
     long crcClaimId,
-    int commentTypeId)
+    int commentTypeId,
+    Func<T,long?> getCRCommentID,
+    Func<T,long?> getDocID,
+    Func<T,string> getPageFrom,
+    Func<T,string> getPageTo,
+    Func<T,string> getComments)
 {
     foreach (var item in items)
     {
         sb.Append("<Table1>");
         sb.Append(GenerateTag("CRCClaimID",  crcClaimId));
-        sb.Append(GenerateTag("CRCommentID", item.CRCommentID));
+        sb.Append(GenerateTag("CRCommentID", getCRCommentID(item)));
         sb.Append(GenerateTag("CRCommentTypeID", commentTypeId));
-        sb.Append(GenerateTag("DocID",       item.DocID));
-        sb.Append(GenerateTag("PageFrom",    item.PageFrom));
-        sb.Append(GenerateTag("PageTo",      item.PageTo));
-        sb.Append(GenerateTag("Comments",    item.Comments));
+        sb.Append(GenerateTag("DocID",       getDocID(item)));
+        sb.Append(GenerateTag("PageFrom",    getPageFrom(item)));
+        sb.Append(GenerateTag("PageTo",      getPageTo(item)));
+        sb.Append(GenerateTag("Comments",    getComments(item)));
         sb.Append("</Table1>");
     }
 }
-
 var sources = new[]
 {
     (Items: AssertedDamageTypeList,  TypeId: 83),
