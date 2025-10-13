@@ -36,3 +36,15 @@ public IActionResult DownloadOrOpen(string docPath, string fileName)
 
     return File(fileBytes, contentType);
 }
+// streaming version where blobDetails.Content is a Stream
+if (ext == ".pdf")
+{
+    Response.Headers.Add("Content-Disposition", $"inline; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}");
+    return new FileStreamResult(blobDetails.Content, contentType);
+}
+else
+{
+    var fsr = new FileStreamResult(blobDetails.Content, contentType) { FileDownloadName = fileName };
+    return fsr; // sets Content-Disposition: attachment
+}
+
