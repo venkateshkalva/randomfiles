@@ -36,15 +36,19 @@ public IActionResult DownloadOrOpen(string docPath, string fileName)
 
     return File(fileBytes, contentType);
 }
-// streaming version where blobDetails.Content is a Stream
+//
 if (ext == ".pdf")
-{
-    Response.Headers.Add("Content-Disposition", $"inline; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}");
-    return new FileStreamResult(blobDetails.Content, contentType);
+    {
+        // Open inline for PDFs
+        var inlineHeader = $"inline; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+        Response.Headers.Add("Content-Disposition", inlineHeader);
+        return File(fileBytes, contentType); // no FileDownloadName -> inline
+    }
+    else
+    {
+        // Force download for everything else (EXCEL, MP4, etc.)
+        // Using this overload adds: Content-Disposition: attachment; filename="<fileName>"
+        return File(fileBytes, contentType, fileName);
+    }
 }
-else
-{
-    var fsr = new FileStreamResult(blobDetails.Content, contentType) { FileDownloadName = fileName };
-    return fsr; // sets Content-Disposition: attachment
-}
-
+streaming version where blobDetails.Content is a Stream
