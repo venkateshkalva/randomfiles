@@ -1,86 +1,38 @@
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System.IO;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.AspNetCore.Mvc;
 
-public static class CustomValidators
+public IActionResult DownloadOrOpen(string docPath, string fileName)
 {
-    // prefix: pass "OtherPropertyForm" if your input names are prefixed; otherwise leave null.
-    public static bool ValidateOtherPropertyForm(OtherPropertyForm m, ModelStateDictionary modelState, string prefix = null)
+    // Example: you already have file bytes from cloud storage
+    // byte[] fileBytes = CloudStorage.DownloadFromCloud(docPath).ContentBytes;
+    byte[] fileBytes = GetFileBytesFromYourBlob(docPath); // replace with your method
+    if (fileBytes == null || fileBytes.Length == 0)
+        return NotFound();
+
+    // sanitize filename (avoid directory traversal)
+    fileName = Path.GetFileName(fileName ?? "file");
+
+    // Determine content type using built-in provider
+    var provider = new FileExtensionContentTypeProvider();
+    string contentType;
+    if (!provider.TryGetContentType(fileName, out contentType))
     {
-        string K(string name) => string.IsNullOrEmpty(prefix) ? name : $"{prefix}.{name}";
-        void Require(bool ok, string field, string message)
-        {
-            if (!ok) modelState.AddModelError(K(field), message);
-        }
-        bool IsEmpty(string? s) => string.IsNullOrWhiteSpace(s);
-        bool HasVal<T>(T? v) where T : struct => v.HasValue;
-
-        // ---- Base requireds (mirror your attributes) ----
-        Require(!IsEmpty(m.OtherPersonalPropertyName), nameof(m.OtherPersonalPropertyName),
-            "Personal property name is required.");
-
-        Require(HasVal(m.IsProofOfOwnership), nameof(m.IsProofOfOwnership),
-            "Proof of ownership is required.");
-
-        Require(HasVal(m.IsProofOfDamageProvidedByFire), nameof(m.IsProofOfDamageProvidedByFire),
-            "Proof of damage is required.");
-
-        Require(HasVal(m.IsProofOfActualCash), nameof(m.IsProofOfActualCash),
-            "Selection for actual cash value/cost of repair is required.");
-
-        Require(HasVal(m.IsInsuranceInfoProvided), nameof(m.IsInsuranceInfoProvided),
-            "Did the claimant provide insurance information? is required.");
-
-        // ---- Conditional rules (adapted from your screenshots) ----
-        // Ownership% required when ProofOfOwnership == 2
-        if (m.IsProofOfOwnership == 2)
-        {
-            Require(HasVal(m.OtherOwnershipPercentage), nameof(m.OtherOwnershipPercentage),
-                "Ownership % is required.");
-        }
-
-        // VIN/HIN required when type == 1 (Automobile/Watercraft/Other Vehicle)
-        if (m.OtherPersonalPropertyID == 1)
-        {
-            Require(!IsEmpty(m.VINorHIN_Number), nameof(m.VINorHIN_Number),
-                "VIN or HIN number is required.");
-        }
-
-        // Cost of repair required when IsProofOfActualCash == 2
-        if (m.IsProofOfActualCash == 2)
-        {
-            Require(HasVal(m.CostofRepair), nameof(m.CostofRepair),
-                "Cost of repair is required.");
-        }
-
-        // Coverage + Payment required when insurance info provided (2 or 3)
-        if (m.IsInsuranceInfoProvided == 2 || m.IsInsuranceInfoProvided == 3)
-        {
-            Require(HasVal(m.CoverageLimit), nameof(m.CoverageLimit),
-                "Coverage limit is required.");
-            Require(HasVal(m.PaymentAmount), nameof(m.PaymentAmount),
-                "Payment amount is required.");
-        }
-
-        // Optional: document metadata if you enforce uploads
-        if (m.UploadedFile) // or whatever flag means a file is attached
-        {
-            Require(HasVal(m.DocumentTypeID), nameof(m.DocumentTypeID),
-                "Document type is required.");
-            Require(HasVal(m.MELienholderID), nameof(m.MELienholderID),
-                "Lienholder is required.");
-        }
-
-        return modelState.IsValid;
-    }
-}
-
-public IActionResult OnPostSessionSavePersonalPropertyReviewDetails()
-{
-    // If your inputs are not prefixed, omit the 3rd arg.
-    if (!CustomValidators.ValidateOtherPropertyForm(OtherPropertyForm, ModelState /*, "OtherPropertyForm"*/))
-    {
-        showHideOtherPP = true;
-        return Page();
+        contentType = "application/octet-stream";
     }
 
-    // ... your save logic
+    // Decide disposition: inline only for PDFs; attachment otherwise
+    var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+    var dispositionType = ext == ".pdf" ? "inline" : "attachment";
+
+    // Build safe Content-Disposition header
+    // Use RFC-compliant filename* for UTF-8 as well as a simple filename fallback
+    var headerValue = $"{dispositionType}; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+
+    // Remove any existing header (prevent duplicates) and add ours
+    if (Response.Headers.ContainsKey("Content-Disposition"))
+        Response.Headers.Remove("Content-Disposition");
+    Response.Headers.Add("Content-Disposition", headerValue);
+
+    return File(fileBytes, contentType);
 }
