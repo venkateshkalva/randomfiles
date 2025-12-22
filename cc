@@ -1,54 +1,91 @@
-using System.IO;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.AspNetCore.Mvc;
+<!DOCTYPE html>
+<html>
 
-public IActionResult DownloadOrOpen(string docPath, string fileName)
-{
-    // Example: you already have file bytes from cloud storage
-    // byte[] fileBytes = CloudStorage.DownloadFromCloud(docPath).ContentBytes;
-    byte[] fileBytes = GetFileBytesFromYourBlob(docPath); // replace with your method
-    if (fileBytes == null || fileBytes.Length == 0)
-        return NotFound();
+<head>
+    <title>Date Picker Table Example</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 50%;
+        }
 
-    // sanitize filename (avoid directory traversal)
-    fileName = Path.GetFileName(fileName ?? "file");
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
 
-    // Determine content type using built-in provider
-    var provider = new FileExtensionContentTypeProvider();
-    string contentType;
-    if (!provider.TryGetContentType(fileName, out contentType))
-    {
-        contentType = "application/octet-stream";
-    }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
 
-    // Decide disposition: inline only for PDFs; attachment otherwise
-    var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
-    var dispositionType = ext == ".pdf" ? "inline" : "attachment";
+<body>
+    <h1>Date Picker Table Example</h1>
+    <input type="date" id="dateInput" />
+    <button id="addDateBtn" disabled>Add Date</button>
 
-    // Build safe Content-Disposition header
-    // Use RFC-compliant filename* for UTF-8 as well as a simple filename fallback
-    var headerValue = $"{dispositionType}; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+    <table id="dateTable">
+        <tr>
+            <th>Date</th>
+            <th>Action</th>
+        </tr>
+    </table>
 
-    // Remove any existing header (prevent duplicates) and add ours
-    if (Response.Headers.ContainsKey("Content-Disposition"))
-        Response.Headers.Remove("Content-Disposition");
-    Response.Headers.Add("Content-Disposition", headerValue);
+    <script>
+        $(document).ready(function () {
+            // Load existing dates from localStorage
+            let dates = JSON.parse(localStorage.getItem('dates')) || [];
 
-    return File(fileBytes, contentType);
-}
-//
-if (ext == ".pdf")
-    {
-        // Open inline for PDFs
-        var inlineHeader = $"inline; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
-        Response.Headers.Add("Content-Disposition", inlineHeader);
-        return File(fileBytes, contentType); // no FileDownloadName -> inline
-    }
-    else
-    {
-        // Force download for everything else (EXCEL, MP4, etc.)
-        // Using this overload adds: Content-Disposition: attachment; filename="<fileName>"
-        return File(fileBytes, contentType, fileName);
-    }
-}
-streaming version where blobDetails.Content is a Stream
+            // Function to render table
+            function renderTable() {
+                const table = $('#dateTable');
+                table.find('tr:gt(0)').remove(); // remove all rows except header
+                dates.forEach(date => {
+                    table.append(`<tr>
+                        <td>${date}</td>
+                        <td><button class="deleteBtn" data-date="${date}">Delete</button></td>
+                    </tr>`);
+                });
+            }
+
+            renderTable();
+
+            // Enable add button when date is selected
+            $('#dateInput').on('change', function () {
+                $('#addDateBtn').prop('disabled', !this.value);
+            });
+
+            // Add date
+            $('#addDateBtn').click(function () {
+                const selectedDate = $('#dateInput').val();
+
+                if (!selectedDate) return;
+
+                if (dates.includes(selectedDate)) {
+                    alert('Date already exists!');
+                } else {
+                    dates.push(selectedDate);
+                    localStorage.setItem('dates', JSON.stringify(dates));
+                    renderTable();
+                }
+
+                $('#dateInput').val(''); // Clear input
+                $('#addDateBtn').prop('disabled', true); // Disable button
+            });
+
+            // Delete date
+            $(document).on('click', '.deleteBtn', function () {
+                const dateToDelete = $(this).data('date');
+                dates = dates.filter(d => d !== dateToDelete);
+                localStorage.setItem('dates', JSON.stringify(dates));
+                renderTable();
+            });
+        });
+    </script>
+</body>
+
+</html>
