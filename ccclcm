@@ -1,275 +1,191 @@
 @page
-@model attorneyInfo.Pages.claim
-@{
-    ViewData["Title"] = "claim";
-}
+@model DocumentsModel
 
+<button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+    Upload Document
+</button>
 
-<h2>Initiate a Claim</h2>
+<hr />
 
-<div class="container mt-5">
-<form method="post">
-    <fieldset>
-        <legend>Tell Us About Yourself</legend>
+<div id="documentsContainer">
+    @await Html.PartialAsync("_ViewDocuments", Model.Documents)
+</div>
 
-        <div class="form-group mb-3">
-            <label>First Name</label>
-            <input asp-for="FirstName" class="form-control" />
-        </div>
-        
-        <div class="form-group mb-3">
-            <label>Middle Name</label>
-            <input asp-for="MiddleName" class="form-control" />
-        </div>
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" enctype="multipart/form-data" asp-page-handler="Upload">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Upload Document</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
 
-        <div class="form-group mb-3">
-            <label>Last Name</label>
-            <input asp-for="LastName" class="form-control" />
-        </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Document Type</label>
+                        <select asp-for="Upload.FileType" class="form-select" required>
+                            <option value="">-- Select --</option>
+                            <option value="ID Proof">ID Proof</option>
+                            <option value="Address Proof">Address Proof</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
 
-        <div class="form-group mb-3">
-            <label>Suffix</label>
-            <select asp-for="Suffix" class="form-select">
-                <option value="">Select</option>
-                <option>Jr.</option>
-                <option>Sr.</option>
-                <option>III</option>
-            </select>
-        </div>
-    </fieldset>
+                    <div class="mb-3">
+                        <label>Select File</label>
+                        <input type="file" asp-for="Upload.File" class="form-control" required />
+                    </div>
+                </div>
 
-    <fieldset>
-        <legend>Your Mailing Address</legend>
-
-        <div class="form-group mb-3">
-            <label>Address 1</label>
-            <input asp-for="Address1" class="form-control" />
-        </div>
-        <div class="form-group mb-3">
-            <label>Address 2</label>
-            <input asp-for="Address2" class="form-control" />
-        </div>
-
-        <div class="form-group mb-3">
-            <label>City</label>
-            <input asp-for="City" class="form-control" />
-        </div>
-
-        <div class="form-group mb-3">
-            <label>State</label>
-            <select asp-for="State" class="form-select">
-                <option value="">Select...</option>
-                <option>CA</option>
-                <option>NY</option>
-            </select>
-        </div>
-
-        <div class="form-group mb-3">
-            <label>Zip Code</label>
-            <input asp-for="ZipCode" class="form-control" />
-        </div>
-    </fieldset>
-
-    <fieldset>
-        <legend>Your Contact Information</legend>
-
-        <div class="form-group mb-3">
-            <label>Email Address</label>
-            <input asp-for="Email" class="form-control" />
-        </div>
-        <div class="form-group mb-3">
-            <label>Confirm Email Address</label>
-            <input asp-for="ConfirmEmail" class="form-control" />
-        </div>
-
-        <div class="form-group mb-3">
-            <label>Daytime Phone</label>
-            <input asp-for="DaytimePhone" class="form-control" />
-        </div>
-
-        <div class="form-group mb-3">
-            <label>Mobile Phone</label>
-            <input asp-for="MobilePhone" class="form-control" />
-        </div>
-    </fieldset>
-
-    <fieldset>
-        <legend>Business Claim</legend>
-        <div class="form-check mb-3">
-            <input type="radio" asp-for="IsBusinessClaim" value="true" class="form-check-input" id="businessClaimYes" />
-            <label class="form-check-label" for="businessClaimYes">Yes</label>
-        </div>
-        <div class="form-check mb-3">
-            <input type="radio" asp-for="IsBusinessClaim" value="false" class="form-check-input" id="businessClaimNo" />
-            <label class="form-check-label" for="businessClaimNo">No</label>
-        </div>
-
-        <div class="form-group mb-3">
-            <label>Business Name</label>
-            <input asp-for="BusinessName" class="form-control" />
-        </div>
-
-        <div class="form-group mb-3">
-            <label>Business Address 1</label>
-            <input asp-for="BusinessAddress1" class="form-control" />
-        </div>
-        <div class="form-group mb-3">
-            <label>Address 2</label>
-            <input asp-for="BusinessAddress2" class="form-control" />
-        </div>
-
-        <div class="form-group mb-3">
-            <label>City</label>
-            <input asp-for="BusinessCity" class="form-control" />
-        </div>
-        <div class="form-group mb-3">
-            <label>State</label>
-            <select asp-for="BusinessState" class="form-select">
-                <option value="">Select...</option>
-                <option>CA</option>
-            </select>
-        </div>
-
-        <div class="form-group mb-3">
-            <label>Zip Code</label>
-            <input asp-for="BusinessZipCode" class="form-control" />
-        </div>
-
-        <div class="form-check mb-3">
-            <input asp-for="AuthorizedToClaim" type="checkbox" class="form-check-input" id="authorizedToClaim" />
-            <label class="form-check-label" for="authorizedToClaim">
-                I certify I am authorized to initiate a claim on behalf of the business.
-            </label>
-        </div>
-    </fieldset>
-
-    <fieldset>
-        <legend>Claim Type</legend>
-
-        <label>Claimant Type</label><br />
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="ClaimantType" value="Vessel Owner" class="form-check-input" id="claimantVesselOwner" />
-            <label class="form-check-label" for="claimantVesselOwner">Vessel Owner</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="ClaimantType" value="Vessel Lessee" class="form-check-input" id="claimantVesselLessee" />
-            <label class="form-check-label" for="claimantVesselLessee">Vessel Lessee</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="ClaimantType" value="Boat Captain" class="form-check-input" id="claimantBoatCaptain" />
-            <label class="form-check-label" for="claimantBoatCaptain">Boat Captain</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="ClaimantType" value="Crew Member" class="form-check-input" id="claimantCrewMember" />
-            <label class="form-check-label" for="claimantCrewMember">Crew Member</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="ClaimantType" value="Business Owner/Representative" class="form-check-input" id="claimantBusinessOwner" />
-            <label class="form-check-label" for="claimantBusinessOwner">Business Owner/Representative</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="ClaimantType" value="Other" class="form-check-input" id="claimantOther" />
-            <label class="form-check-label" for="claimantOther">Other</label>
-        </div>
-
-        <label>Sector</label><br />
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="Sector" value="Commercial Fishing" class="form-check-input" id="sectorCommercialFishing" />
-            <label class="form-check-label" for="sectorCommercialFishing">Commercial Fishing</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="Sector" value="For-Hire/Recreational Fishing" class="form-check-input" id="sectorForHire" />
-            <label class="form-check-label" for="sectorForHire">For-Hire/Recreational Fishing</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="radio" asp-for="Sector" value="Shore-side Business" class="form-check-input" id="sectorShoreSide" />
-            <label class="form-check-label" for="sectorShoreSide">Shoreside Business</label>
-        </div>
-
-        <label>Fishery</label><br />
-        <div class="form-check form-check-inline mb-3">
-            <input type="checkbox" asp-for="Fishery" value="Whelk" class="form-check-input" id="fisheryWhelk" />
-            <label class="form-check-label" for="fisheryWhelk">Whelk</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="checkbox" asp-for="Fishery" value="Spiny Dogfish" class="form-check-input" id="fisherySpinyDogfish" />
-            <label class="form-check-label" for="fisherySpinyDogfish">Spiny Dogfish</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="checkbox" asp-for="Fishery" value="Shrimp" class="form-check-input" id="fisheryShrimp" />
-            <label class="form-check-label" for="fisheryShrimp">Shrimp</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="checkbox" asp-for="Fishery" value="Black Sea Bass" class="form-check-input" id="fisheryBlackSeaBass" />
-            <label class="form-check-label" for="fisheryBlackSeaBass">Black Sea Bass</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="checkbox" asp-for="Fishery" value="Surfclam" class="form-check-input" id="fisherySurfclam" />
-            <label class="form-check-label" for="fisherySurfclam">Surfclam</label>
-        </div>
-        <div class="form-check form-check-inline mb-3">
-            <input type="checkbox" asp-for="Fishery" value="Other" class="form-check-input" id="fisheryOther" />
-            <label class="form-check-label" for="fisheryOther">Other</label>
-        </div>
-    </fieldset>
-
-    <button type="submit" class="btn btn-primary">Submit</button>
-</form>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success" type="submit">Upload</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 
- [BindProperty]
-    public string FirstName { get; set; }
+
+
+
+
+
+
+public class UploadedDocument
+{
+    public int Id { get; set; }
+    public string FileName { get; set; }
+    public string FileType { get; set; }
+    public string FilePath { get; set; }
+    public DateTime UploadedOn { get; set; }
+}
+
+
+
+
+
+
+
+
+
+@model List<UploadedDocument>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>File Name</th>
+            <th>Type</th>
+            <th>Uploaded On</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var doc in Model)
+        {
+            <tr>
+                <td>
+                    <a href="@doc.FilePath" target="_blank">@doc.FileName</a>
+                </td>
+                <td>@doc.FileType</td>
+                <td>@doc.UploadedOn.ToString("MM/dd/yyyy")</td>
+                <td>
+                    <form method="post" asp-page-handler="Delete">
+                        <input type="hidden" name="id" value="@doc.Id" />
+                        <button class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+public class DocumentsModel : PageModel
+{
+    private readonly IWebHostEnvironment _env;
+
+    public DocumentsModel(IWebHostEnvironment env)
+    {
+        _env = env;
+    }
+
+    public List<UploadedDocument> Documents { get; set; } = new();
 
     [BindProperty]
-    public string MiddleName { get; set; }
+    public UploadInput Upload { get; set; }
 
-    [BindProperty]
-    public string LastName { get; set; }
+    public void OnGet()
+    {
+        LoadDocuments();
+    }
 
-    [BindProperty]
-    public string Suffix { get; set; }
+    public IActionResult OnPostUpload()
+    {
+        if (!ModelState.IsValid) return RedirectToPage();
 
-    [BindProperty]
-    public string Address1 { get; set; }
-    [BindProperty]
-    public string Address2 { get; set; }
-    [BindProperty]
-    public string City { get; set; }
-    [BindProperty]
-    public string State { get; set; }
-    [BindProperty]
-    public string ZipCode { get; set; }
+        var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads");
+        Directory.CreateDirectory(uploadsFolder);
 
-    [BindProperty]
-    public string Email { get; set; }
-    [BindProperty]
-    public string ConfirmEmail { get; set; }
-    [BindProperty]
-    public string DaytimePhone { get; set; }
-    [BindProperty]
-    public string MobilePhone { get; set; }
+        var fileName = $"{Guid.NewGuid()}_{Upload.File.FileName}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
 
-    [BindProperty]
-    public bool IsBusinessClaim { get; set; }
-    [BindProperty]
-    public string BusinessName { get; set; }
-    [BindProperty]
-    public string BusinessAddress1 { get; set; }
-    [BindProperty]
-    public string BusinessAddress2 { get; set; }
-    [BindProperty]
-    public string BusinessCity { get; set; }
-    [BindProperty]
-    public string BusinessState { get; set; }
-    [BindProperty]
-    public string BusinessZipCode { get; set; }
-    [BindProperty]
-    public bool AuthorizedToClaim { get; set; }
+        using var stream = new FileStream(filePath, FileMode.Create);
+        Upload.File.CopyTo(stream);
 
-    [BindProperty]
-    public string ClaimantType { get; set; }
-    [BindProperty]
-    public string Sector { get; set; }
-    [BindProperty]
-    public string Fishery { get; set; }
+        // Save metadata (DB recommended)
+        DocumentsStore.Add(new UploadedDocument
+        {
+            Id = DocumentsStore.NextId(),
+            FileName = Upload.File.FileName,
+            FileType = Upload.FileType,
+            FilePath = $"/uploads/{fileName}",
+            UploadedOn = DateTime.Now
+        });
+
+        return RedirectToPage();
+    }
+
+    public IActionResult OnPostDelete(int id)
+    {
+        var doc = DocumentsStore.Get(id);
+        if (doc != null)
+        {
+            var fullPath = Path.Combine(_env.WebRootPath, doc.FilePath.TrimStart('/'));
+            if (System.IO.File.Exists(fullPath))
+                System.IO.File.Delete(fullPath);
+
+            DocumentsStore.Delete(id);
+        }
+
+        return RedirectToPage();
+    }
+
+    private void LoadDocuments()
+    {
+        Documents = DocumentsStore.All();
+    }
+}
+
+
+
+
+
+public class UploadInput
+{
+    [Required]
+    public string FileType { get; set; }
+
+    [Required]
+    public IFormFile File { get; set; }
+}
