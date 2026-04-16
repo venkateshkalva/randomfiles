@@ -1,0 +1,69 @@
+// See https://aka.ms/new-console-template for more information
+Console.WriteLine("Hello, World!");
+
+// Install-Package itext7
+using System;
+using System.IO;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas.Parser;
+using iText.Kernel.Pdf.Canvas.Parser.Listener;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        string folderPath = @"/path/to/your/pdf/folder"; // update this path
+
+        foreach (var file in Directory.GetFiles(folderPath, "*.pdf"))
+        {
+            bool hasSignature = CheckSignatureInLastPage(file);
+
+            if (hasSignature)
+                Console.WriteLine($"{Path.GetFileName(file)} : TRUE (Signature Found)");
+            else
+                Console.WriteLine($"{Path.GetFileName(file)} : FALSE (No Signature)");
+        }
+    }
+
+    static bool CheckSignatureInLastPage(string filePath)
+    {
+        try
+        {
+            using (PdfReader reader = new PdfReader(filePath))
+            using (PdfDocument pdfDoc = new PdfDocument(reader))
+            {
+                int lastPageNumber = pdfDoc.GetNumberOfPages();
+                var page = pdfDoc.GetPage(lastPageNumber);
+
+                var strategy = new SimpleTextExtractionStrategy();
+                string pageText = PdfTextExtractor.GetTextFromPage(page, strategy);
+
+                // Basic check: look for keyword "signature" or similar
+                if (pageText.ToLower().Contains("signature") ||
+                    pageText.ToLower().Contains("signed") ||
+                    pageText.ToLower().Contains("authorized"))
+                {
+                    return true;
+                }
+
+                // Optional: check for form fields (digital signature fields)
+                var form = iText.Forms.PdfAcroForm.GetAcroForm(pdfDoc, false);
+                if (form != null)
+                {
+                    var fields = form.GetFormFields();
+                    foreach (var field in fields)
+                    {
+                        if (field.Value.GetFormType().ToString().Contains("Sig"))
+                            return true;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing {filePath}: {ex.Message}");
+        }
+
+        return false;
+    }
+}
