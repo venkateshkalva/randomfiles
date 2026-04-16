@@ -140,5 +140,111 @@ static bool HasDigitalSignature(PdfDocument pdfDoc)
     }
     return false;
 }
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas.Parser;
+using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+
+static async Task<bool> CheckSignatureInLastPage(string filePath)
+{
+    try
+    {
+        // Step 1: Render last page to PNG using iText + ImageMagick or PdfiumViewer
+        byte[] pageImageBytes = RenderLastPageToImage(filePath);
+
+        // Step 2: Send to Claude Vision API
+        bool hasSignature = await AskAIForSignature(pageImageBytes);
+
+        return hasSignature;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+        return false;
+    }
+}
+
+// Render PDF last page to image using PdfiumViewer (NuGet)
+static byte[] RenderLastPageToImage(string filePath)
+{
+    // Option A: Use PdfiumViewer (Windows)
+    using var pdf = PdfiumViewer.PdfDocument.Load(filePath);
+    int lastPage = pdf.PageCount - 1;
+    
+    using var image = pdf.Render(
+        page: lastPage,
+        width: 1200,
+        height: 1600,
+        dpiX: 150,
+        dpiY: 150,
+        forPrinting: false
+    );
+
+    using var ms = new MemoryStream();
+    image.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+    return ms.ToArray();
+}
+
+// Send rendered image to Claude Vision
+static async Task<bool> AskAIForSignature(byte[] imageBytes)
+{
+    using var client = new HttpClient();
+    client.DefaultRequestHeaders.Add("x-api-key", "YOUR_CLAUDE_API_KEY");
+    client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+
+    string base64Image = Convert.ToBase64String(imageBytes);
+
+    var requestBody = new
+    {
+        model = "claude-opus-4-5",
+        max_tokens = 100,
+        messages = new[]
+        {
+            new
+            {
+                role = "user",
+                content = new object[]
+                {
+                    new
+                    {
+                        type = "image",
+                        source = new
+                        {
+                            type = "base64",
+                            media_type = "image/png",
+                            data = base64Image
+                        }
+                    },
+                    new
+                    {
+                        type = "text",
+                        text = @"Look at this document page carefully.
+                                 Does it contain a handwritten or electronic signature?
+                                 A signature is typically a cursive or stylized name written
+                                 by hand, often above a signature line.
+                                 Reply with ONLY: YES or NO"
+                    }
+                }
+            }
+        }
+    };
+
+    var json = JsonSerializer.Serialize(requestBody);
+    var response = await client.PostAsync(
+        "https://api.anthropic.com/v1/messages",
+        new StringContent(json, Encoding.UTF8, "application/json")
+    );
+
+    var result = await response.Content.ReadAsStringAsync();
+    var parsed = JsonDocument.Parse(result);
+    string answer = parsed.RootElement
+        .GetProperty("content")[0]
+        .GetProperty("text")
+        .GetString() ?? "";
+
+    return answer.Trim().StartsWith("YES", StringComparison.OrdinalIgnoreCase);
+}
 
 
