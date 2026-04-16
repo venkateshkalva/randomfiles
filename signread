@@ -245,6 +245,133 @@ static async Task<bool> AskAIForSignature(byte[] imageBytes)
         .GetString() ?? "";
 
     return answer.Trim().StartsWith("YES", StringComparison.OrdinalIgnoreCase);
+
+
+
+
+using Docnet.Core;
+using Docnet.Core.Models;
+using SkiaSharp;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        string folderPath = @"C:\YourPdfFolder";
+
+        foreach (var file in Directory.GetFiles(folderPath, "*.pdf"))
+        {
+            bool hasSignature = await CheckSignatureInLastPage(file);
+            Console.WriteLine($"{Path.GetFileName(file)} : {(hasSignature ? "TRUE (Signature Found)" : "FALSE (No Signature)")}");
+        }
+    }
+
+    static async Task<bool> CheckSignatureInLastPage(string filePath)
+    {
+        try
+        {
+            byte[] imageBytes = RenderLastPageToImage(filePath);
+            return await AskAIForSignature(imageBytes);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error processing {filePath}: {ex.Message}");
+            return false;
+        }
+    }
+
+    static byte[] RenderLastPageToImage(string filePath)
+    {
+        using var library = DocLib.Instance;
+        using var docReader = library.GetDocReader(
+            filePath,
+            new PageDimensions(1200, 1600)
+        );
+
+        int lastPageIndex = docReader.GetPageCount() - 1;
+
+        using var pageReader = docReader.GetPageReader(lastPageIndex);
+
+        byte[] rawBytes = pageReader.GetImage(); // BGRA format
+        int width = pageReader.GetPageWidth();
+        int height = pageReader.GetPageHeight();
+
+        // Convert BGRA bytes to PNG
+        using var bitmap = new SKBitmap();
+        var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
+
+        unsafe
+        {
+            fixed (byte* ptr = rawBytes)
+            {
+                bitmap.InstallPixels(info, (IntPtr)ptr, info.RowBytes);
+                using var image = SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                return data.ToArray();
+            }
+        }
+    }
+
+    static async Task<bool> AskAIForSignature(byte[] imageBytes)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("x-api-key", "YOUR_CLAUDE_API_KEY");
+        client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+
+        string base64Image = Convert.ToBase64String(imageBytes);
+
+        var requestBody = new
+        {
+            model = "claude-opus-4-5",
+            max_tokens = 100,
+            messages = new[]
+            {
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new
+                        {
+                            type = "image",
+                            source = new
+                            {
+                                type = "base64",
+                                media_type = "image/png",
+                                data = base64Image
+                            }
+                        },
+                        new
+                        {
+                            type = "text",
+                            text = "Does this document page contain a handwritten or electronic signature? A signature is typically cursive or stylized writing above a signature line. Reply ONLY with YES or NO."
+                        }
+                    }
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var response = await client.PostAsync(
+            "https://api.anthropic.com/v1/messages",
+            new StringContent(json, Encoding.UTF8, "application/json")
+        );
+
+        var result = await response.Content.ReadAsStringAsync();
+        var parsed = JsonDocument.Parse(result);
+        string answer = parsed.RootElement
+            .GetProperty("content")[0]
+            .GetProperty("text")
+            .GetString() ?? "";
+
+        return answer.Trim().StartsWith("YES", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+
 }
 
 
