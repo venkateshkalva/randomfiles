@@ -1,0 +1,37 @@
+using iText.Forms;
+using iText.Forms.Fields;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Annot;
+
+using var pdf = new PdfDocument(new PdfReader(path));
+var acroForm = PdfAcroForm.GetAcroForm(pdf, false);
+
+if (acroForm == null)
+{
+    Console.WriteLine("No AcroForm.");
+    return;
+}
+
+var fields = acroForm.GetFormFields();
+
+foreach (var kv in fields)
+{
+    string fieldName = kv.Key;
+    PdfFormField field = kv.Value;
+
+    var fieldObject = field.GetPdfObject();
+    var ft = fieldObject.GetAsName(iText.Kernel.Pdf.PdfName.FT);
+
+    if (PdfName.Sig.Equals(ft))
+    {
+        Console.WriteLine($"Signature field found: {fieldName}");
+
+        var widgets = field.GetWidgets();
+        foreach (var widget in widgets)
+        {
+            var rect = widget.GetRectangle()?.ToRectangle();
+            var page = widget.GetPage();
+            Console.WriteLine($" Page: {pdf.GetPageNumber(page)}, Rect: {rect}");
+        }
+    }
+}
