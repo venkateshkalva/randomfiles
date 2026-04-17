@@ -1,46 +1,179 @@
+using Azure.Storage.Blobs;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using Microsoft.Data.SqlClient;
 using System.Text.RegularExpressions;
 
-static bool CheckSignatureInLastPage(string filePath)
+class Program
 {
-    try
+    // ── Config ──────────────────────────────────────────────
+    private const string SQL_CONNECTION   = "Server=your_server.database.windows.net;Database=your_db;User Id=your_user;Password=your_pass;";
+    private const string AZURE_CONNECTION = "DefaultEndpointsProtocol=https;AccountName=your_account;AccountKey=your_key;EndpointSuffix=core.windows.net";
+    private const string CONTAINER_NAME   = "your-container";
+
+    // Table that has file paths
+    private const string SOURCE_TABLE     = "dbo.PdfFiles";
+    private const string SOURCE_COL_ID    = "Id";
+    private const string SOURCE_COL_PATH  = "FilePath";      // e.g. "folder/subfolder/file.pdf"
+    private const string SOURCE_COL_NAME  = "FileName";
+
+    // Table to insert results into
+    private const string RESULT_TABLE     = "dbo.SignatureResults";
+    // ────────────────────────────────────────────────────────
+
+    static async Task Main(string[] args)
     {
-        using var reader = new PdfReader(filePath);
+        Console.WriteLine("Starting signature detection...\n");
+
+        var files = await GetFileRecordsFromSql();
+        Console.WriteLine($"Found {files.Count} files to process.\n");
+
+        foreach (var file in files)
+        {
+            Console.Write($"Processing: {file.FileName} ... ");
+
+            try
+            {
+                // 1. Download PDF from Azure Blob into memory
+                byte[] pdfBytes = await DownloadBlobToMemory(file.FilePath);
+
+                // 2. Check signature
+                var (isSigned, date) = CheckSignature(pdfBytes);
+
+                // 3. Insert result to SQL
+                await InsertSignatureResult(file.Id, file.FileName, isSigned, date);
+
+                Console.WriteLine(isSigned ? $"✓ SIGNED ({date})" : "✗ NOT SIGNED");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR: {ex.Message}");
+                await InsertSignatureResult(file.Id, file.FileName, false, null, ex.Message);
+            }
+        }
+
+        Console.WriteLine("\nDone.");
+    }
+
+    // ── Step 1: Read file paths from SQL ────────────────────
+    static async Task<List<PdfFileRecord>> GetFileRecordsFromSql()
+    {
+        var records = new List<PdfFileRecord>();
+
+        using var conn = new SqlConnection(SQL_CONNECTION);
+        await conn.OpenAsync();
+
+        var query = $@"
+            SELECT {SOURCE_COL_ID}, 
+                   {SOURCE_COL_NAME}, 
+                   {SOURCE_COL_PATH}
+            FROM   {SOURCE_TABLE}
+            WHERE  Processed = 0   -- only unprocessed files
+               OR  Processed IS NULL";
+
+        using var cmd = new SqlCommand(query, conn);
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            records.Add(new PdfFileRecord
+            {
+                Id       = reader.GetInt32(0),
+                FileName = reader.GetString(1),
+                FilePath = reader.GetString(2)
+            });
+        }
+
+        return records;
+    }
+
+    // ── Step 2: Download blob into memory ───────────────────
+    static async Task<byte[]> DownloadBlobToMemory(string blobPath)
+    {
+        var blobServiceClient   = new BlobServiceClient(AZURE_CONNECTION);
+        var containerClient     = blobServiceClient.GetBlobContainerClient(CONTAINER_NAME);
+        var blobClient          = containerClient.GetBlobClient(blobPath);
+
+        using var ms = new MemoryStream();
+        await blobClient.DownloadToAsync(ms);
+        return ms.ToArray();
+    }
+
+    // ── Step 3: Check signature using iText ─────────────────
+    static (bool isSigned, string? date) CheckSignature(byte[] pdfBytes)
+    {
+        using var ms     = new MemoryStream(pdfBytes);
+        using var reader = new PdfReader(ms);
         using var pdfDoc = new PdfDocument(reader);
 
-        int lastPageNumber = pdfDoc.GetNumberOfPages();
-        var page = pdfDoc.GetPage(lastPageNumber);
+        // Check last page only
+        int lastPage = pdfDoc.GetNumberOfPages();
+        var page     = pdfDoc.GetPage(lastPage);
 
         var strategy = new SimpleTextExtractionStrategy();
-        string pageText = PdfTextExtractor.GetTextFromPage(page, strategy);
+        string text  = PdfTextExtractor.GetTextFromPage(page, strategy);
 
-        return HasExecutedDate(pageText);
+        return ExtractExecutedDate(text);
     }
-    catch (Exception ex)
+
+    static (bool isSigned, string? date) ExtractExecutedDate(string pageText)
     {
-        Console.WriteLine($"Error processing {filePath}: {ex.Message}");
-        return false;
+        // Matches: "Executed on this 11 day of March 2026"
+        var pattern = @"Executed\s+on\s+this\s+(\d{1,2})\s+day\s+of\s+(\w+)\s+(\d{4})";
+        var match   = Regex.Match(pageText, pattern, RegexOptions.IgnoreCase);
+
+        if (match.Success)
+        {
+            string date = $"{match.Groups[1].Value} {match.Groups[2].Value} {match.Groups[3].Value}";
+            return (true, date);
+        }
+
+        return (false, null);
     }
-}
 
-static bool HasExecutedDate(string pageText)
-{
-    // Matches: "Executed on this 11 day of March 2026"
-    // Number can be 1-31, written as digits
-    var pattern = @"Executed\s+on\s+this\s+(\d{1,2})\s+day\s+of\s+\w+\s+\d{4}";
-
-    var match = Regex.Match(pageText, pattern, RegexOptions.IgnoreCase);
-
-    if (match.Success)
+    // ── Step 4: Insert result to SQL ────────────────────────
+    static async Task InsertSignatureResult(
+        int     sourceId,
+        string  fileName,
+        bool    isSigned,
+        string? signedDate,
+        string? errorMessage = null)
     {
-        string dayNumber = match.Groups[1].Value;
-        Console.WriteLine($"  → Found date number: {dayNumber}");
-        return true;  // Number exists = signed
+        using var conn = new SqlConnection(SQL_CONNECTION);
+        await conn.OpenAsync();
+
+        // Insert into results table
+        var insertQuery = $@"
+            INSERT INTO {RESULT_TABLE} 
+                (SourceId, FileName, IsSigned, SignedDate, ErrorMessage, ProcessedAt)
+            VALUES 
+                (@SourceId, @FileName, @IsSigned, @SignedDate, @ErrorMessage, GETUTCDATE())";
+
+        using var cmd = new SqlCommand(insertQuery, conn);
+        cmd.Parameters.AddWithValue("@SourceId",     sourceId);
+        cmd.Parameters.AddWithValue("@FileName",     fileName);
+        cmd.Parameters.AddWithValue("@IsSigned",     isSigned);
+        cmd.Parameters.AddWithValue("@SignedDate",   (object?)signedDate  ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@ErrorMessage", (object?)errorMessage ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync();
+
+        // Mark as processed in source table
+        var updateQuery = $@"
+            UPDATE {SOURCE_TABLE} 
+            SET    Processed = 1 
+            WHERE  {SOURCE_COL_ID} = @Id";
+
+        using var updateCmd = new SqlCommand(updateQuery, conn);
+        updateCmd.Parameters.AddWithValue("@Id", sourceId);
+        await updateCmd.ExecuteNonQueryAsync();
     }
 
-    // No number found = blank = unsigned
-    Console.WriteLine("  → 'Executed on this' line has no date = Unsigned");
-    return false;
+    // ── Model ────────────────────────────────────────────────
+    record PdfFileRecord
+    {
+        public int    Id       { get; init; }
+        public string FileName { get; init; } = "";
+        public string FilePath { get; init; } = "";
+    }
 }
