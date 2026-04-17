@@ -1,0 +1,46 @@
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas.Parser;
+using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using System.Text.RegularExpressions;
+
+static bool CheckSignatureInLastPage(string filePath)
+{
+    try
+    {
+        using var reader = new PdfReader(filePath);
+        using var pdfDoc = new PdfDocument(reader);
+
+        int lastPageNumber = pdfDoc.GetNumberOfPages();
+        var page = pdfDoc.GetPage(lastPageNumber);
+
+        var strategy = new SimpleTextExtractionStrategy();
+        string pageText = PdfTextExtractor.GetTextFromPage(page, strategy);
+
+        return HasExecutedDate(pageText);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error processing {filePath}: {ex.Message}");
+        return false;
+    }
+}
+
+static bool HasExecutedDate(string pageText)
+{
+    // Matches: "Executed on this 11 day of March 2026"
+    // Number can be 1-31, written as digits
+    var pattern = @"Executed\s+on\s+this\s+(\d{1,2})\s+day\s+of\s+\w+\s+\d{4}";
+
+    var match = Regex.Match(pageText, pattern, RegexOptions.IgnoreCase);
+
+    if (match.Success)
+    {
+        string dayNumber = match.Groups[1].Value;
+        Console.WriteLine($"  → Found date number: {dayNumber}");
+        return true;  // Number exists = signed
+    }
+
+    // No number found = blank = unsigned
+    Console.WriteLine("  → 'Executed on this' line has no date = Unsigned");
+    return false;
+}
